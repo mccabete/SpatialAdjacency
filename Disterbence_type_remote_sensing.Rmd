@@ -1,0 +1,39 @@
+---
+title: "Spatial Adjactentcy Disterbence type ratios"
+output: html_notebook
+---
+
+
+Loading up LANDFIRE disturbence products: 
+
+```{r, echo= TRUE}
+library(ncdf4)
+library(raster)
+library(rgdal)
+library(RColorBrewer)
+library(RArcInfo)
+library(tidyverse)
+library(xml2)
+test <- brick("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/lf81651946_US_VDIST2014/US_VDIST2014\\US_VDIST2014.tif")
+geuss<-ratify(test)
+new <- brick("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/vdist.grd")
+
+csv<-read.csv("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/vdist.csv")
+#x <- raster()
+#writeRaster(x,"/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/lf81651946_US_VDIST2014/US_VDIST2014\\US_VDIST2014.tfw", options=c('TFW=YES'))
+#summary(test)
+#GDALinfo(x)
+meta_list <-  as_list(metadataXML)
+
+real<-as.matrix(geuss)
+## Manipulation (based on .csv)
+fire_only<-real[real<=133]
+raster::as.raster(fire_only)
+
+```
+
+```{r}
+
+#adf<-raster("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/lf01660972_US_VDIST2014/US_VDIST2014\\us_vdist2014\\prj.adf", x = )
+
+```
