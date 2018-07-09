@@ -311,3 +311,36 @@ values(r) <- c(NA,NA,NA,NA,NA,
 get_interior_vertices(r)
 
 ```
+
+## Edge to interior ratio function
+
+```{r}
+edge_to_interior<- function(r, ...){
+  
+  outer<- get_outer_edges(r)
+  inner<- get_interior_vertices(r)
+  
+  return(outer$number/inner$number)
+}
+```
+
+** testing on cases from the notes**
+```{r}
+r <- raster(ncol=5, nrow=5)
+values(r) <- c(NA,NA,NA,NA,NA,
+               NA,NA,NA,NA,NA,
+               NA,1,1,NA,NA,
+               NA,1,1,NA,NA,
+               NA,NA,NA,NA,NA)
+
+edge_to_interior(r)
+
+
+values(r) <- c(NA,NA,NA,NA,NA,
+               NA,1,1,1,NA,
+               NA,NA,NA,NA,NA,
+               NA,NA,NA,NA,NA,
+               NA,NA,NA,NA,NA)
+edge_to_interior(r)
+
+```
