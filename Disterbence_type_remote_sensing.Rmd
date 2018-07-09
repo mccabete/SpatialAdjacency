@@ -14,26 +14,66 @@ library(RColorBrewer)
 library(RArcInfo)
 library(tidyverse)
 library(xml2)
-test <- brick("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/lf81651946_US_VDIST2014/US_VDIST2014\\US_VDIST2014.tif")
-geuss<-ratify(test)
-new <- brick("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/vdist.grd")
+library(igraph)
+test <- raster("/Users/tess/Documents/work/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
 
-csv<-read.csv("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/vdist.csv")
-#x <- raster()
-#writeRaster(x,"/Users/tess/Documents/work/Spacial_adj/LANDFIRE/Geo_tiff/lf81651946_US_VDIST2014/US_VDIST2014\\US_VDIST2014.tfw", options=c('TFW=YES'))
-#summary(test)
-#GDALinfo(x)
-meta_list <-  as_list(metadataXML)
+csv<-read.csv("/Users/tess/Documents/work/LANDFIRE/disturb2000.csv")
+csv_fire<-csv[grep("*ire*", csv$Dist_Type),]
 
-real<-as.matrix(geuss)
-## Manipulation (based on .csv)
-fire_only<-real[real<=133]
-raster::as.raster(fire_only)
 
+### Attempt to subset just fire
+fire<-c(csv_fire$Value, 0)
+tmp<-getValues(test)
+tmp[!(tmp %in% fire)] <- 0
+#temp<-as.matrix(temp)
+fire_only <- test
+values(fire_only) <- tmp
+rm(tmp)
+
+fire_clump<-clump(fire_only, gaps = TRUE, directions = 4)
+clump_1<- fire_clump
+tmp<- getValues(fire_clump)
+tmp[ tmp != 11]<- NA
+values(clump_1) <- tmp
+area<- area(clump_1)
+
+plot(fire_clump == 11)
+plot(clump_1)
+
+## Double checking how the area function works
+r <- raster(ncol=10, nrow=10)
+values(r) <- c(rep(0, (ncell(r)/2)-30),rep(1,30),rep(0, (ncell(r)/2)))
+
+bound_r<-boundaries(clump_1, type = "outer", directions = 4)
+plot(bound_r)
+#zoom(bound_r)
 ```
+(ALL CASES ARE ROOK'S CASE NOTE QUEEN'S CASE OR BISHOP"S CASE")
+Plan for future work: How to get the outer edge and internal vertecies edge ratio
+*NOTE* Mike defines a vertex by the number of pixes in contact with this edge, so if two pixels are touching, it's two verticies, even if they touch one anouther. The difference is, if it's just one pixel touching an vertex, it's an edge, and if it's two pixels, it's an interior vertex. 
 
+## outer edge
+
+- use the boundaries fucntion to take the inner and outer boundary of a clump. The number of verticies these two boundaries touch will be the number of outer edges
+
+## Inner edge. 
+
+- first, substract the inner boundary from a clump and multiply by four
+- then, add the number of edges where the inner boundary touches the clump NOTE: ONLY MULTIPLY BY 1. ALREADY TOOK CARE OF EXTRA VERTEX WITH THE *4 thing.
+- The number of internal vertecies in the inner boundary itself is equal to the inverse of the number of edges touching the inner boundary if you were to run an outer boundary on just your inner boundary on the inner boundary layer (So it surrounded the inner boundary on both sides) 
+This I have to multiply by two. 
+
+
+## What I need to make that happen:
+  A function whose input is the two rasters, and whose output is the number of touching edges (Multiplied by one)
+  
 ```{r}
-
-#adf<-raster("/Users/tess/Documents/work/Spacial_adj/LANDFIRE/lf01660972_US_VDIST2014/US_VDIST2014\\us_vdist2014\\prj.adf", x = )
+#Find the cell numbers for boundary
+Adjacent<-cbind(values(bound_r), 1:ncell(bound_r))
+Adjacent<- na.omit(Adjacent)
+clump <- cbind(values(clump_1), 1:ncell(clump_1))
+clump <- na.omit(clump)
+### Note, to test this, I need a simpler example. 
+touching<-adjacent(clump_1, cells = Adjacent[,2],directions = 4, target = clump[,2] )
 
 ```
