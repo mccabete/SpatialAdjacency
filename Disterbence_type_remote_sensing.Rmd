@@ -46,21 +46,7 @@ plot(clump_1)
 Plan for future work: How to get the outer edge and internal vertecies edge ratio
 *NOTE* Mike defines a vertex by the number of pixes in contact with this edge, so if two pixels are touching, it's two verticies, even if they touch one anouther. The difference is, if it's just one pixel touching an vertex, it's an edge, and if it's two pixels, it's an interior vertex. 
 
-## outer edge
 
-- use the boundaries fucntion to take the inner and outer boundary of a clump. The number of verticies these two boundaries touch will be the number of outer edges
-
-## Inner edge. 
-
-- first, substract the inner boundary from a clump and multiply by four
-- then, add the number of edges where the inner boundary touches the clump NOTE: ONLY MULTIPLY BY 1. ALREADY TOOK CARE OF EXTRA VERTEX WITH THE *4 thing.
-- The number of internal vertecies in the inner boundary itself is equal to the inverse of the number of edges touching the inner boundary if you were to run an outer boundary on just your inner boundary on the inner boundary layer (So it surrounded the inner boundary on both sides) 
-This I have to multiply by two. 
-
-
-## What I need to make that happen:
-  A function whose input is the two rasters, and whose output is the number of touching edges (Multiplied by one)
-  
 ```{r}
 
 ## Double checking how the area function works
@@ -194,8 +180,9 @@ get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = TRUE, ..
     ## get the adjacentcy 
     touching<-adjacent(r, cells = new_index_r[,2] ,directions = 4, target =    Adjacent[,2])
     
-    outer_edges$cells<- touching
-    outer_edges$number<- length(touching[,1])
+    outer_edges$cells <- touching
+    outer_edges$number <- length(touching[,1])
+    outer_edges$size <- length(new_index_r[,2])
     
     return(outer_edges)
 }
@@ -282,8 +269,9 @@ get_interior_vertices<- function(r, directions = 4, classes = FALSE, FRAME = TRU
     ## get the adjacentcy 
     touching<-adjacent(r, cells = new_index_r[,2] ,directions = 4, target =   new_index_r[,2])
     
-    interior_vertices$cells<- touching
-    interior_vertices$number<- length(touching[,1])
+    interior_vertices$cells <- touching
+    interior_vertices$number <- length(touching[,1])
+    interior_vertices$size <- length(new_index_r[,2])
     
     return(interior_vertices)
   
@@ -317,10 +305,14 @@ get_interior_vertices(r)
 ```{r}
 edge_to_interior<- function(r, ...){
   
+  results <- list()  
+
   outer<- get_outer_edges(r)
   inner<- get_interior_vertices(r)
   
-  return(outer$number/inner$number)
+  results$ratio <- outer$number/inner$number
+  results$size <- outer$size
+  return()
 }
 ```
 
