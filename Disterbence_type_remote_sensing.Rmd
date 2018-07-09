@@ -40,13 +40,7 @@ area<- area(clump_1)
 plot(fire_clump == 11)
 plot(clump_1)
 
-## Double checking how the area function works
-r <- raster(ncol=10, nrow=10)
-values(r) <- c(rep(0, (ncell(r)/2)-30),rep(1,30),rep(0, (ncell(r)/2)))
 
-bound_r<-boundaries(clump_1, type = "outer", directions = 4)
-plot(bound_r)
-#zoom(bound_r)
 ```
 (ALL CASES ARE ROOK'S CASE NOTE QUEEN'S CASE OR BISHOP"S CASE")
 Plan for future work: How to get the outer edge and internal vertecies edge ratio
@@ -68,12 +62,174 @@ This I have to multiply by two.
   A function whose input is the two rasters, and whose output is the number of touching edges (Multiplied by one)
   
 ```{r}
+
+## Double checking how the area function works
+r <- raster(ncol=5, nrow=5)
+values(r) <- c(NA,NA,NA,1,NA,
+               1,1,1,1,NA,
+               NA,1,1,1,NA,
+               NA,1,1,1,NA,
+               NA,NA,NA,NA,NA)
+
+plot(r)
+bound_r <- r
+bound_r <- boundaries(r, type = "outer", directions = 4, classes= FALSE)
+
+plot(bound_r)
+#zoom(bound_r)
+
 #Find the cell numbers for boundary
-Adjacent<-cbind(values(bound_r), 1:ncell(bound_r))
-Adjacent<- na.omit(Adjacent)
-clump <- cbind(values(clump_1), 1:ncell(clump_1))
-clump <- na.omit(clump)
+tmp_bound_r<-values(bound_r)
+tmp_bound_r[tmp_bound_r ==0] <- NA
+
+Adjacent <- cbind(tmp_bound_r, 1:ncell(bound_r))
+Adjacent <- na.omit(Adjacent)
+
+# Find the cell numbers for the disturbence itself
+r_clump <- cbind(values(r), 1:ncell(r))
+r_clump <- na.omit(r_clump)
+
 ### Note, to test this, I need a simpler example. 
-touching<-adjacent(clump_1, cells = Adjacent[,2],directions = 4, target = clump[,2] )
+touching<-adjacent(r, cells = r_clump[,2] ,directions = 4, target = Adjacent[,2], pairs = FALSE)
+
+touching #Everthing I wanted, except for some reason lists 6 and 10? Seems like a wrap-around effect. Could just force a extra frame of NA's to prevent
+
+## Double checking that an extra frame of NA's will solve this problem
+s <- raster(ncol=6, nrow=5)
+values(s) <- c(NA,NA,NA,1,NA,NA,
+               NA,1,1,1,1,NA,
+               NA,NA,1,1,1,NA,
+               NA,NA,1,1,1,NA,
+               NA,NA,NA,NA,NA,NA)
+
+plot(s)
+bound_s <- s
+bound_s <- boundaries(s, type = "outer", directions = 4, classes= FALSE)
+
+plot(bound_s)
+
+
+#Find the cell numbers for boundary
+tmp_bound_s<-values(bound_s)
+tmp_bound_s[tmp_bound_s ==0] <- NA
+
+Adjacent <- cbind(tmp_bound_s, 1:ncell(bound_s))
+Adjacent <- na.omit(Adjacent)
+
+# Find the cell numbers for the disturbence itself
+s_clump <- cbind(values(s), 1:ncell(s))
+s_clump <- na.omit(s_clump)
+
+### Note, to test this, I need a simpler example. 
+touching<-adjacent(s, cells = s_clump[,2] ,directions = 4, target = Adjacent[,2])
+
+touching
+
+
+```
+OK: So this brings up an interesting issue: Wrap-around values. So, the 5 is touching the 6 in this example, which wouldn't be allowed in Mike and I's analysis. Would be rare, but need a check/ account for. 
+
+
+## Implementing Functions
+
+**Outer Edge**
+```{r}
+get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = TRUE, ...){
+  
+  outer_edges<- list()
+  
+  ## Check that the raster uses NA's as background state
+ has_NA <-NA %in% values(r)
+  
+ # Make indexable matrix of r
+ index_r <- cbind( values(r), seq(1:ncell(r)))
+ 
+  if( ! has_NA ){
+    print("WARNING, this raster seems to not use NA's as background state. This could mean that the number of edge cells is inflated if value-cells are on a boarder of the raster ")
+  }
+  
+  ## Give frame of NA's
+  if(has_NA & FRAME){
+    
+    r_ncol <- ncol(r)
+    #r_nrow <- nrow(r)
+    n_ncell <- (ncol(r) + 2) * (nrow(r) + 2)
+    
+    #Make new values vector
+    n_vals <- rep(NA, n_ncell)
+    n_ncol <- ncol(r) + 2
+    mult_row <- 0
+    
+    for(i in 1:ncell(r)){
+      
+      new_index <- n_ncol + 1 + mult_row + index_r[i,2]
+      n_vals[new_index] <- index_r[i,1]
+      
+      if(((new_index + 1) %% n_ncol) == 0){
+        mult_row<- mult_row+2
+      }
+      
+    }
+  
+    
+    r<- raster(nrows = r_nrow+2, ncol = r_ncol +2, vals = as.matrix(n_vals))
+  }
+  
+  
+  ## Get outer boundary
+  bound_r <- boundaries(r, type = "outer", directions = 4, classes= classes)
+  
+  ## account for every time the outher boundary touches the raster itself
+  
+    ## Prep the indexes
+    new_index_r <- cbind( values(r), seq(1:ncell(r)))
+    new_index_r <- na.omit(new_index_r) ## need a new index
+  
+    tmp_bound_r<-values(bound_r)
+    tmp_bound_r[tmp_bound_r ==0] <- NA
+
+    Adjacent <- cbind(tmp_bound_r, 1:ncell(bound_r))
+    Adjacent <- na.omit(Adjacent)
+    
+    ## get the adjacentcy 
+    touching<-adjacent(r, cells = new_index_r[,2] ,directions = 4, target =    Adjacent[,2])
+    
+    outer_edges$cells<- touching
+    outer_edges$number<- length(touching[,1])
+    
+    return(outer_edges)
+}
+
+```
+
+** Testing get_outer_edges on simple cases **
+
+```{r}
+r <- raster(ncol=5, nrow=5)
+values(r) <- c(NA,NA,NA,NA,NA,
+               NA,NA,NA,NA,NA,
+               NA,1,NA,NA,NA,
+               NA,1,NA,NA,NA,
+               NA,NA,NA,NA,NA)
+
+get_outer_edges(r)
+
+
+values(r) <- c(NA,NA,NA,NA,NA,
+               NA,1,1,1,NA,
+               NA,1,NA,1,NA,
+               NA,1,1,1,NA,
+               NA,NA,NA,NA,NA)
+get_outer_edges(r)
+
+```
+
+** Interior Vertices **
+NOTE:  can get internal vertieces (by mike's definition) by setting cells to just the values, and target to those same values
+
+```{r}
+get_interior_vertices(r, directions =4, classes = FALSE, ...){
+  
+}
 
 ```
