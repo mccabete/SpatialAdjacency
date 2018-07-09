@@ -15,35 +15,11 @@ library(RArcInfo)
 library(tidyverse)
 library(xml2)
 library(igraph)
-test <- raster("/Users/tess/Documents/work/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
-
-csv<-read.csv("/Users/tess/Documents/work/LANDFIRE/disturb2000.csv")
-csv_fire<-csv[grep("*ire*", csv$Dist_Type),]
-
-
-### Attempt to subset just fire
-fire<-c(csv_fire$Value, 0)
-tmp<-getValues(test)
-tmp[!(tmp %in% fire)] <- 0
-#temp<-as.matrix(temp)
-fire_only <- test
-values(fire_only) <- tmp
-rm(tmp)
-
-fire_clump<-clump(fire_only, gaps = TRUE, directions = 4)
-clump_1<- fire_clump
-tmp<- getValues(fire_clump)
-tmp[ tmp != 11]<- NA
-values(clump_1) <- tmp
-area<- area(clump_1)
-
-plot(fire_clump == 11)
-plot(clump_1)
 
 
 ```
 (ALL CASES ARE ROOK'S CASE NOTE QUEEN'S CASE OR BISHOP"S CASE")
-Plan for future work: How to get the outer edge and internal vertecies edge ratio
+
 *NOTE* Mike defines a vertex by the number of pixes in contact with this edge, so if two pixels are touching, it's two verticies, even if they touch one anouther. The difference is, if it's just one pixel touching an vertex, it's an edge, and if it's two pixels, it's an interior vertex. 
 
 
@@ -310,6 +286,10 @@ edge_to_interior<- function(r, ...){
   outer<- get_outer_edges(r)
   inner<- get_interior_vertices(r)
   
+  if(outer$size <= 1){
+    stop ("Size of disturbence is a single pixel. Will result in a 4/0.")
+  }
+  
   results$ratio <- outer$number/inner$number
   results$size <- outer$size
   return()
@@ -336,3 +316,60 @@ values(r) <- c(NA,NA,NA,NA,NA,
 edge_to_interior(r)
 
 ```
+
+
+Some issues and limitations to disscuss: 
+1. All this is implemented for rook's case, not queen's case. How do we feel about this? 
+2. How do we parse disturbences? By event or by spatially contigious "splotches"? 
+     - very little (if any?) documentation on events 
+     - In our current scheme, things that viasually would look like a coninious dsturbence might get filtered out if conected along a diagonal
+     - also could imagine a scanario where a larger fire becomes smaller less connected fires effects of larger fire wouldn't be captured
+     - This brings us back to a wider question of "What do we really expect the edge to interior ratio to charecterise?"
+3. I have beed lumping together all fire catagories. What catagories should I break fire into? 
+4. we also can't work with disturbences that are a pixel or less. And that is the majority of disturbences in the landfire dataset. (I have a mock-up example chart with real data) 
+
+## With Landfire
+
+```{r}
+
+test <- raster("/Users/tess/Documents/work/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
+
+csv<-read.csv("/Users/tess/Documents/work/LANDFIRE/disturb2000.csv")
+csv_fire<-csv[grep("*ire*", csv$Dist_Type),]
+
+
+### Attempt to subset just fire
+fire<-c(csv_fire$Value, 0)
+tmp<-getValues(test)
+tmp[!(tmp %in% fire)] <- NA
+tmp[tmp == 0] <- NA
+tmp[tmp > 0] <-1
+#temp<-as.matrix(temp)
+fire_only <- test
+values(fire_only) <- tmp
+rm(tmp)
+
+fire_clump<-clump(fire_only, gaps = FALSE, directions = 4)
+#clump_1<- fire_clump
+#tmp<- getValues(fire_clump)
+#tmp[ tmp != 11]<- NA
+#values(clump_1) <- tmp
+#rm(tmp)
+
+plot(fire_clump == 13)
+
+## Try a clump-based loop
+clump_num <- unique(fire_clump)
+clump_num[clump_num <= 10] <- NA
+clump_num <- na.omit(unique(fire_clump))
+
+resuts<- list()
+for ( i in seq_along(clump_num)){
+
+  results[i] <- edge_to_interior(fire_clump == i)
+}
+
+
+```
+
+NOTE TO SELF: Right now I don't actually match Mike's slides. He does a int/ int + edge. Gotta fix, and will kinda change my "/0" issue. 
