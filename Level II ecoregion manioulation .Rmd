@@ -1,0 +1,18 @@
+---
+title: "Level II ecoregions"
+output: html_notebook
+---
+
+Where I play with the level II ecoregion data
+
+```{r}
+library(maptools)
+
+eco_II<-readShapePoly(fn = "~/Documents/work/na_cec_eco_l2/NA_CEC_Eco_Level2.shp")
+
+plot(eco_II)
+Southern_coastal_plains <- eco_II[eco_II$NA_L2NAME == "MISSISSIPPI ALLUVIAL AND SOUTHEAST USA COASTAL PLAINS", ]
+Southern_coastal_plains$Shape_Area
+
+
+```
