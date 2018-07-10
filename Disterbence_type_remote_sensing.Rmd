@@ -114,7 +114,7 @@ get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = TRUE, ..
   if(has_NA & FRAME){
     
     r_ncol <- ncol(r)
-    #r_nrow <- nrow(r)
+    r_nrow <- nrow(r)
     n_ncell <- (ncol(r) + 2) * (nrow(r) + 2)
     
     #Make new values vector
@@ -134,7 +134,7 @@ get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = TRUE, ..
     }
   
     
-    r<- raster(nrows = r_nrow+2, ncol = r_ncol +2, vals = as.matrix(n_vals))
+    r<- raster(nrows = r_nrow+2, ncol = r_ncol +2, vals = n_vals)
   }
   
   
@@ -279,6 +279,8 @@ get_interior_vertices(r)
 ## Edge to interior ratio function
 
 ```{r}
+
+
 edge_to_interior<- function(r, ...){
   
   results <- list()  
@@ -287,12 +289,15 @@ edge_to_interior<- function(r, ...){
   inner<- get_interior_vertices(r)
   
   if(outer$size <= 1){
-    stop ("Size of disturbence is a single pixel. Will result in a 4/0.")
+    print ("Size of disturbence is a single pixel. Will result in a 0/4.")
+    ratio <- NA
+  }else{
+    ratio <- inner$number/(outer$number+inner$number)
   }
   
-  results$ratio <- outer$number/inner$number
+  results$ratio <- ratio
   results$size <- outer$size
-  return()
+  return(results)
 }
 ```
 
@@ -335,6 +340,8 @@ Some issues and limitations to disscuss:
 test <- raster("/Users/tess/Documents/work/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
 
 csv<-read.csv("/Users/tess/Documents/work/LANDFIRE/disturb2000.csv")
+
+
 csv_fire<-csv[grep("*ire*", csv$Dist_Type),]
 
 
@@ -350,26 +357,31 @@ values(fire_only) <- tmp
 rm(tmp)
 
 fire_clump<-clump(fire_only, gaps = FALSE, directions = 4)
-#clump_1<- fire_clump
-#tmp<- getValues(fire_clump)
-#tmp[ tmp != 11]<- NA
-#values(clump_1) <- tmp
-#rm(tmp)
 
-plot(fire_clump == 13)
-
-## Try a clump-based loop
 clump_num <- unique(fire_clump)
-clump_num[clump_num <= 10] <- NA
-clump_num <- na.omit(unique(fire_clump))
 
-resuts<- list()
+ratio <- rep(NA, length(clump_num))
+size <-  rep(NA, length(clump_num))
+results <- cbind(ratio, size)
+results <- as.data.frame(results, row.names = FALSE)
+
 for ( i in seq_along(clump_num)){
+  clump_id<-c(i, NA)
+  tmp <- getValues(fire_clump)
+  tmp[!(tmp %in% clump_id)] <- NA
+  clump <- fire_clump
+  values(clump) <- tmp
+  rm(tmp)
+  
+  
+  out <- edge_to_interior(clump)
+  results$ratio[i] <- as.numeric(out$ratio)
+  results$size[i] <- as.numeric(out$size)
 
-  results[i] <- edge_to_interior(fire_clump == i)
+  rm(out)
+ 
 }
 
 
 ```
 
-NOTE TO SELF: Right now I don't actually match Mike's slides. He does a int/ int + edge. Gotta fix, and will kinda change my "/0" issue. 
