@@ -1,4 +1,4 @@
-get_interior_vertices <- function(r, directions = 4, classes = FALSE, FRAME = TRUE, ...){
+get_interior_vertices <- function(r, directions = 4, classes = FALSE, FRAME = FALSE, ...){
   
   interior_vertices <- list()
   

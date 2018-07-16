@@ -1,4 +1,4 @@
-get_ratio_dist <- function ( r,text, dist_type, year, csv) {
+get_ratio_dist <- function ( r,text, dist, date, csv) {
   csv_fire<-csv[grep(text, csv$Dist_Type),]
   
   
@@ -18,10 +18,10 @@ get_ratio_dist <- function ( r,text, dist_type, year, csv) {
   
   ## create results object
   ratio <- rep(NA, length(clump_num))
-  year <- rep(NA, length(clump_num))
-  dist_type <- rep(NA, length(clump_num))
+  Year <- rep(NA, length(clump_num))
+  Dist_type <- rep(NA, length(clump_num))
   size <-  rep(NA, length(clump_num))
-  results <- cbind(ratio, size, year, dist_type)
+  results <- cbind(ratio, size, Year, Dist_type)
   results <- as.data.frame(results, row.names = FALSE)
   
   for ( i in seq_along(clump_num)){
@@ -38,8 +38,8 @@ get_ratio_dist <- function ( r,text, dist_type, year, csv) {
     results$size[i] <- as.numeric(out$size)
     rm(out)
   }
-  results$year <- year
-  results$dist_type <- dist_type
+  #results$Year <- rep(as.character(date), length(clump_num))
+  #results$Dist_type <- rep(as.character(dist), length(clump_num))
   results <- as.data.frame(results)
   return(results)
   

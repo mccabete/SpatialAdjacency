@@ -395,4 +395,3 @@ out_file <- ""
 
 Fire_2000<- get_ratio_dist(test, text, dist_type, "2000", csv, out_file)
 ```
-
