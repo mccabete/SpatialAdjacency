@@ -1,18 +1,30 @@
-get_ratio_dist <- function ( r,text, dist, date, csv) {
+get_ratio_dist <- function ( r,text, dist, date, csv, eco_region = FALSE, path_ecoregion) {
   csv_fire<-csv[grep(text, csv$Dist_Type),]
   
-  
+  ### get the ecoregion
+ #eco_region <- readOGR(dsn = "/Users/tess/Documents/work/na_cec_eco_l2/", layer = "NA_CEC_Eco_Level2")
+ #projection(eco_region) <- projection(r) 
+ #work <- crop(eco_region, r) #
+ 
   ### Attempt to subset just fire
-  fire<-c(csv_fire$Value, 0)
-  tmp<-getValues(test)
-  tmp[!(tmp %in% fire)] <- NA
-  tmp[tmp == 0] <- NA
-  tmp[tmp > 0] <-1
-  fire_only <- test
-  values(fire_only) <- tmp
-  rm(tmp)
+  #fire<-c(csv_fire$Value, 0)
+  #tmp<-getValues(r)
+  #tmp[!(tmp %in% fire)] <- NA
+  #tmp[tmp == 0] <- NA
+  #tmp[tmp > 0] <-1
+  #fire_only <- r
+  #values(fire_only) <- tmp
+  #rm(tmp)
   
-  fire_clump<-clump(fire_only, gaps = FALSE, directions = 4)
+  #fire_clump <- clump(fire_only, gaps = FALSE, directions = 4)
+  
+  dist_clump <- clump(r, gaps = FALSE, directions = 4)
+  stack <- addLayer(r, dist_clump) 
+  
+  fire_clump <- stack$clumps
+  #geometries <- geom(eco_region)
+  #over(geometries, fire_only)
+  
   
   clump_num <- unique(fire_clump)
   

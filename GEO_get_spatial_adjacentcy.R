@@ -6,7 +6,9 @@
 
 require(raster)
 require(igraph)
-
+require(rgeos)
+library(rgdal)
+library(sp)
 ## Functions
 source("/Users/tess/Documents/work/Spacial_adj/get_outer_edges.R")
 source("/Users/tess/Documents/work/Spacial_adj/get_interior_vertices.R")
@@ -24,6 +26,8 @@ dist <- "Fire"
 out_file <- ""
 
 date= "2000"
+
+path_ecoregion <- "/Users/tess/Documents/work/na_cec_eco_l2/"
 ## Write output
 Fire_2000<- get_ratio_dist(test, text, dist=dist_type, date="2000", csv)
 #write_csv(Fire_2000,"/Users/tess/Documents/work/LANDFIRE/Fire_200.csv" )
