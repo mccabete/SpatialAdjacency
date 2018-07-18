@@ -6,9 +6,9 @@
 
 require(raster)
 require(igraph)
-require(rgeos)
-library(rgdal)
-library(sp)
+#equire(rgeos)
+#library(rgdal)
+#library(sp)
 ## Functions
 source("/Users/tess/Documents/work/Spacial_adj/get_outer_edges.R")
 source("/Users/tess/Documents/work/Spacial_adj/get_interior_vertices.R")
@@ -21,7 +21,7 @@ source("/Users/tess/Documents/work/Spacial_adj/get_ratio_dist.R")
 r <- raster("/Users/tess/Documents/work/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
 csv<-read.csv("/Users/tess/Documents/work/LANDFIRE/US_DIST2000/CSV_Data/US_disturb2000.csv")
 text <- "*ire*"
-dist <- "Fire"
+dist_type <- "Fire"
 
 out_file <- ""
 
@@ -29,5 +29,5 @@ date= "2000"
 
 path_ecoregion <- "/Users/tess/Documents/work/na_cec_eco_l2/"
 ## Write output
-Fire_2000<- get_ratio_dist(test, text, dist=dist_type, date="2000", csv)
+Fire_2000<- get_ratio_dist(r, date="2000", csv = csv)
 #write_csv(Fire_2000,"/Users/tess/Documents/work/LANDFIRE/Fire_200.csv" )
