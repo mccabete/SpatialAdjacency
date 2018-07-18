@@ -47,26 +47,6 @@ raster_to_age_matrix <- function(r) {
     
   }
   
-  ## Make a stack of exclusivly every age class
-  stack <- stack(r)
-  for(i in seq_along(age_classes)){
-    tmp <- r
-    just_num <- vals
-    if (!is.na(age_classes[i])){
-      just_num[ just_num != age_classes[i]] <- NA
-    }
-    
-    if(is.na(age_classes[i])){
-      just_num[ is.na(just_num)] <- -9999
-      just_num[ just_num != -9999] <- NA
-    }
-    
-    values (tmp) <- just_num
-    stack <- addLayer(stack, tmp)
-  }
-  names(stack) <-  c("original", age_classes)
-  stack <- dropLayer(stack, 1)
-  layers <- names(stack)
   
   ## Fill in adjacentcies
   for (j in  seq_along(age_classes)){
@@ -78,7 +58,8 @@ raster_to_age_matrix <- function(r) {
       age_small <- as.numeric(cell_numbers[[i]][,2])
       
       
-      adj <- adjacent(r, cells = cell_num_main,target = cell_num_small)
+      adj_test <- adjacent(r, cells = cell_num_main,target = cell_num_small)
+      
       if ( is.na(age_main)){
         count <- total_age_number[,2][is.na(total_age_number[,1])]
         
@@ -87,13 +68,26 @@ raster_to_age_matrix <- function(r) {
         count <- total_age_number[,2][total_age_number[,1] == age_main]
       }
       
-      percent <-length(adj[,1]) / count
       
+      if (is_empty(adj)){
+        count_small <- 0
+      }else {
+        if (length(adj <= 2)){
+          count_small <- length(adj[1])
+        }else{
+          count_small <- length(adj[,1])
+        }
+        
+      }
+      
+      percent <- count_small / count
+      cat( percent, count_small, "count", count)
     age_matrix[j,i] <- percent
       
       }
 
-  }
+  } # adjacentcy loop
   
-
+  
+return (age_matrix)
 }
