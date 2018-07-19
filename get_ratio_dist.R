@@ -24,6 +24,7 @@ get_ratio_dist <- function ( r,text, dist_type, year, csv) {
   results <- cbind(ratio, size, year, dist_type)
   results <- as.data.frame(results, row.names = FALSE)
   
+  ## sequence along all unique clumps
   for ( i in seq_along(clump_num)){
     clump_id<-c(i, NA)
     tmp <- getValues(fire_clump)
@@ -31,7 +32,7 @@ get_ratio_dist <- function ( r,text, dist_type, year, csv) {
     clump <- fire_clump
     values(clump) <- tmp
     rm(tmp)
-    
+   
     
     out <- edge_to_interior(clump)
     results$ratio[i] <- as.numeric(out$ratio)
