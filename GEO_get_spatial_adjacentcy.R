@@ -18,11 +18,12 @@ source("/Users/tess/Documents/work/Spacial_adj/get_ratio_dist.R")
 
 ## Set up paths
 
-r <- raster("/Users/tess/Documents/work/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
-csv<-read.csv("/Users/tess/Documents/work/LANDFIRE/US_DIST2000/CSV_Data/US_disturb2000.csv")
-text <- "*ire*"
-dist_type <- "Fire"
-
+r <- raster("/Users/tess/Downloads/LANDFIRE/Geo_tiff/lf06628962_US_DIST2000/US_DIST2000\\US_DIST2000.tif")
+csv<-read.csv("/Users/tess/Downloads/LANDFIRE/US_DIST2000/CSV_Data/US_disturb2000.csv")
+#text <- "*ire*"
+#dist_type <- "Fire"
+text <- NULL
+dist_type <- NULL
 out_file <- ""
 
 date= "2000"

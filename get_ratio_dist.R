@@ -8,13 +8,13 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
  
   ### Attempt to subset just single disturbence
   if( !is.null(dist) & !is.null(text)){
-    csv_fire<-csv[grep(text, csv$Dist_Type),]
+    csv_fire <- csv[grep(text, csv$Dist_Type),]
   
-  fire<-c(csv_fire$Value, 0)
-  tmp<-getValues(r)
+  fire <- c(csv_fire$Value, 0)
+  tmp <- getValues(r)
   tmp[!(tmp %in% fire)] <- NA
   tmp[tmp == 0] <- NA
-  tmp[tmp > 0] <-1
+  tmp[tmp > 0] <- 1
   fire_only <- r
   values(fire_only) <- tmp
   rm(tmp)
@@ -36,12 +36,15 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
   clump_num <- unique(fire_clump)
   
   ## create results object
-  ratio <- rep(NA, length(clump_num))
-  Year <- rep(NA, length(clump_num))
-  Dist_type <- rep(NA, length(clump_num))
-  size <-  rep(NA, length(clump_num))
-  results <- cbind(ratio, size, Year, Dist_type)
-  results <- as.data.frame(results, row.names = FALSE)
+  #ratio <- rep(NA, length(clump_num))
+  #Year <- rep(NA, length(clump_num))
+  #Dist_type <- rep(NA, length(clump_num))
+  #size <-  rep(NA, length(clump_num))
+  #ids <- rep(NA, length(clump_num))
+  
+  #results <- cbind(ratio, size, Year, Dist_type, ids)
+  #results <- as.data.frame(results, row.names = FALSE)
+  results <- list()
   
   for ( i in seq_along(clump_num)){
     clump_id<-c(i, NA)
@@ -53,12 +56,37 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
     
     
     out <- edge_to_interior(clump)
-    results$ratio[i] <- as.numeric(out$ratio)
-    results$size[i] <- as.numeric(out$size)
-    rm(out)
+    dist_number <- unique(stack$US_DIST2000.US_DIST2000[stack$clumps == i])
+    
+    dist_names <- droplevels(csv_fire$Dist_Type[csv_fire$Value %in% dist_number])
+    dist_names <- droplevels(unique(dist_names))
+    
+    if (length(dist_names) > 1){
+      
+      for (j in 0:length(dist_names)){
+        z = j+1
+        results$ratio[i + j] <- as.numeric(out$ratio)
+        results$size[i + j] <- as.numeric(out$size)
+        results$Dist_type[i + j] <- dist_names[z]
+        results$ids[i + j] <- paste(dist_number, collapse = ' ')
+        final_j <- j
+      }
+      i = i + final_j
+      
+    }else{
+      
+      results$ratio[i] <- as.numeric(out$ratio)
+      results$size[i] <- as.numeric(out$size)
+      results$Dist_type[i] <- dist_names[i]
+      results$ids[i] <- paste(dist_number, collapse = ' ')
+      rm(out)
+      
+    }
+    
+   
   }
-  #results$Year <- rep(as.character(date), length(clump_num))
-  #results$Dist_type <- rep(as.character(dist), length(clump_num))
+  results$Year <- rep(as.character(date), length(results$ratio))
+  
   results <- as.data.frame(results)
   return(results)
   
