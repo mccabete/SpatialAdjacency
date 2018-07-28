@@ -1,10 +1,7 @@
 get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region = FALSE, path_ecoregion) {
   
   
- ### get the ecoregion
- #eco_region <- readOGR(dsn = "/Users/tess/Documents/work/na_cec_eco_l2/", layer = "NA_CEC_Eco_Level2")
- #projection(eco_region) <- projection(r) 
- #work <- crop(eco_region, r) #
+
  
   ### Attempt to subset just single disturbence
   if( !is.null(dist) & !is.null(text)){
@@ -29,21 +26,12 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
   }
   
   stack <- addLayer(fire_only, fire_clump)
-  #geometries <- geom(eco_region)
-  #over(geometries, fire_only)
+
   
   
   clump_num <- unique(fire_clump)
   
-  ## create results object
-  #ratio <- rep(NA, length(clump_num))
-  #Year <- rep(NA, length(clump_num))
-  #Dist_type <- rep(NA, length(clump_num))
-  #size <-  rep(NA, length(clump_num))
-  #ids <- rep(NA, length(clump_num))
-  
-  #results <- cbind(ratio, size, Year, Dist_type, ids)
-  #results <- as.data.frame(results, row.names = FALSE)
+
   results <- list()
   
   for ( i in seq_along(clump_num)){
@@ -59,29 +47,14 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
     dist_number <- unique(stack$US_DIST2000.US_DIST2000[stack$clumps == i])
     
     dist_names <- droplevels(csv_fire$Dist_Type[csv_fire$Value %in% dist_number])
-    dist_names <- droplevels(unique(dist_names))
+    dist_names <- unique(dist_names)
     
-    if (length(dist_names) > 1){
-      
-      for (j in 0:length(dist_names)){
-        z = j+1
-        results$ratio[i + j] <- as.numeric(out$ratio)
-        results$size[i + j] <- as.numeric(out$size)
-        results$Dist_type[i + j] <- dist_names[z]
-        results$ids[i + j] <- paste(dist_number, collapse = ' ')
-        final_j <- j
-      }
-      i = i + final_j
-      
-    }else{
-      
-      results$ratio[i] <- as.numeric(out$ratio)
-      results$size[i] <- as.numeric(out$size)
-      results$Dist_type[i] <- dist_names[i]
-      results$ids[i] <- paste(dist_number, collapse = ' ')
-      rm(out)
-      
-    }
+    results$ratio[i] <- as.numeric(out$ratio)
+    results$size[i] <- as.numeric(out$size)
+    results$Dist_number[i] <- dist_names
+    results$dist_name[i] <- paste(dist_names, collapse = ',')
+    results$ids[i] <- paste(dist_number, collapse = ' ')
+    rm(out)
     
    
   }

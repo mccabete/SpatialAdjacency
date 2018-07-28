@@ -1,0 +1,47 @@
+---
+title: "Level II ecoregions"
+output: html_notebook
+---
+
+Where I play with the level II ecoregion data
+
+```{r}
+library(maptools)
+require(raster)
+require(igraph)
+
+eco_II<-readShapePoly(fn = "~/Documents/work/na_cec_eco_l2/NA_CEC_Eco_Level2.shp")
+
+plot(eco_II)
+Southern_coastal_plains <- eco_II[eco_II$NA_L2NAME == "MISSISSIPPI ALLUVIAL AND SOUTHEAST USA COASTAL PLAINS", ]
+Southern_coastal_plains$Shape_Area
+
+flist <- list.files("~/Downloads/LANDFIRE/Southeast/")
+
+file_path <- paste("~/Downloads/LANDFIRE/Southeast/",flist[1],"/US_DIST2013\\US_DIST2013.tif", sep ="")
+
+file_path_1 <- paste("~/Downloads/LANDFIRE/Southeast/",flist[2],"/US_DIST2013\\US_DIST2013.tif", sep ="")
+entire_us_1 <- raster(file_path)
+entire_us_2 <- raster(file_path_1)
+
+csv <- read.csv("/Users/tess/Downloads/LANDFIRE/US_DIST2000/CSV_Data/US_disturb2000.csv")
+
+plot(entire_us_2)
+test1 <- merge(entire_us_1, entire_us_2)
+```
+
+
+Testing Entire US raster file even though it's in a .adf form
+
+```{r}
+
+library(rgdal)
+
+#all_us <- rgdal::readGDAL(fname = "~/Downloads/LANDFIRE/US_DIST2000/grid1/us_dist2000/") # Too big to load locally
+
+tiny_adf <- rgdal::readGDAL(fname = "~/Downloads/LANDFIRE/HI_Dist2011/Grid/hi_dist2011/") 
+csv<-read.csv("/Users/tess/Downloads/LANDFIRE/US_DIST2000/CSV_Data/US_disturb2000.csv")
+tiny_adf <- raster(tiny_adf)
+HI_ratios <- get_ratio_dist(tiny_adf, date="2011", csv = csv)
+
+```
