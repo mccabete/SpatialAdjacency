@@ -1,6 +1,6 @@
 ### get_outer_edges
 
-get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = TRUE, ...){
+get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = FALSE, ...){
   
   outer_edges<- list()
   
