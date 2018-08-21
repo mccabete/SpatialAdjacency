@@ -7,15 +7,16 @@
 r <- raster(ncol=5, nrow=5)
 
 
-values(r) <- c(NA,6,NA,NA,NA,
+values(r) <- c(6,NA,NA,NA,6,
                NA,5,2,1,NA,
                NA,NA,3,NA,NA,
                NA,1,NA,NA,NA,
-               NA,NA,NA,NA,NA)
+               7,NA,NA,NA,7)
 
 raster_to_age_matrix <- function(r) {
-  
-  total_area <- nrow(r) * ncol(r)
+  ncol <- ncol(r)
+  nrow <- nrow(r)
+  total_area <- nrow * ncol
   vals <- getValues(r)
   background <- total_area - length(na.omit(vals))
   age_classes <- unique(vals)
@@ -67,6 +68,8 @@ raster_to_age_matrix <- function(r) {
       
       
       adj <- adjacent(r, cells = cell_num_main,target = cell_num_small)
+      corner_indecies <- corner_number(nrow, ncol, give_indexes = TRUE)
+      adj_corners <- unique(adj[adj %in% corner_indecies])
      
       
       if ( is.na(age_main)){
@@ -84,17 +87,16 @@ raster_to_age_matrix <- function(r) {
       if (is_empty(adj)){
         count_small <- 0
       }else {
-        if (length(adj)<= 2){
+        if (length(adj) <= 2){
           count_small <- length(adj[1])
         }else{
-          count_small <- length(adj[,1])
+          count_small <- length(adj[,1])  - (2*length(adj_corners))
         }
         
       }
       
       ## get total possible adjacentcies (accounting for corners and boarders)
-      ncol <- ncol(r)
-      nrow <- nrow(r)
+      
       
       edge <- edge_number(nrow, ncol, index_vector = cell_num_main)
       corner <- corner_number(nrow, ncol, index_vector = cell_num_main)
@@ -103,7 +105,7 @@ raster_to_age_matrix <- function(r) {
       
       percent <- count_small / (total_possible) # multiplying count times four becuase each cell has 4 edges
       #cat( age_main,"adjacent to",age_small,"Percent",percent, count_small, "Total possible adjacent", count*4)
-      age_matrix[i,j] <- percent
+      age_matrix[j,i] <- percent
       
       
       
