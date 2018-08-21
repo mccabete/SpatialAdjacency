@@ -1,5 +1,6 @@
 # Note: this function interperates differences in cell 
 # values to be differences in age. This doesn't have to be the case. 
+# requires raster and rlang packages
 
 
 
@@ -26,6 +27,11 @@ raster_to_age_matrix <- function(r) {
   colnames(age_matrix) <- age_classes
   
   total_age_number <- freq(r)
+  values <- total_age_number[,1]
+  counts <- total_age_number[,2]
+  total_age_counts <- cbind(values, counts)
+  total_age_counts <- as.data.frame(total_age_counts)
+  colnames(total_age_counts) <- c("values", "counts")
   
   ## Make a list of cell numbers for every age class
   cell_numbers <- list()
@@ -52,27 +58,31 @@ raster_to_age_matrix <- function(r) {
   for (j in  seq_along(age_classes)){
     cell_num_main <- as.numeric(cell_numbers[[j]][,1])
     age_main <- unique(cell_numbers[[j]][,2])
-    for(i in seq_along(layers) ){
+    
+    for(i in seq_along(age_classes)){
 
       cell_num_small <- as.numeric(cell_numbers[[i]][,1])
-      age_small <- as.numeric(cell_numbers[[i]][,2])
+      age_small <- unique(as.numeric(cell_numbers[[i]][,2]))
       
       
-      adj_test <- adjacent(r, cells = cell_num_main,target = cell_num_small)
+      adj <- adjacent(r, cells = cell_num_main,target = cell_num_small)
       
       if ( is.na(age_main)){
-        count <- total_age_number[,2][is.na(total_age_number[,1])]
+        count <- total_age_counts$counts[is.na(total_age_counts$values)]
         
       }else{
         
-        count <- total_age_number[,2][total_age_number[,1] == age_main]
+        count <- na.omit(total_age_counts[total_age_counts$values == age_main,]$counts)
+        count <- na.omit(count)
+        count <- as.numeric(count)
+    
       }
       
       
       if (is_empty(adj)){
         count_small <- 0
       }else {
-        if (length(adj <= 2)){
+        if (length(adj)<= 2){
           count_small <- length(adj[1])
         }else{
           count_small <- length(adj[,1])
@@ -80,14 +90,18 @@ raster_to_age_matrix <- function(r) {
         
       }
       
-      percent <- count_small / count
-      cat( percent, count_small, "count", count)
-    age_matrix[j,i] <- percent
+      percent <- count_small / (count*4) # multiplying count times four becuase each cell has 4 edges
+      #cat( age_main,"adjacent to",age_small,"Percent",percent, count_small, "Total possible adjacent", count*4)
+      age_matrix[i,j] <- percent
       
-      }
+      
+      
+      } # for loop 
 
   } # adjacentcy loop
   
   
 return (age_matrix)
 }
+
+test<- raster_to_age_matrix(r)
