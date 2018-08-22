@@ -88,7 +88,7 @@ raster_to_age_matrix <- function(r) {
         count_small <- 0
       }else {
         if (length(adj) <= 2){
-          count_small <- length(adj[1])
+          count_small <- length(adj[1]) - (2*length(adj_corners))
         }else{
           count_small <- length(adj[,1])  - (2*length(adj_corners))
         }
@@ -96,8 +96,6 @@ raster_to_age_matrix <- function(r) {
       }
       
       ## get total possible adjacentcies (accounting for corners and boarders)
-      
-      
       edge <- edge_number(nrow, ncol, index_vector = cell_num_main)
       corner <- corner_number(nrow, ncol, index_vector = cell_num_main)
       total_possible <- ((length(cell_num_main) - (edge + corner))*4) + (edge * 3) + (corner*2)
