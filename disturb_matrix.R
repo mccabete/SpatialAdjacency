@@ -1,13 +1,3 @@
-r <- raster(ncol=5, nrow=5)
-
-
-values(r) <- c(6,NA,NA,NA,6,
-               NA,5,2,1,NA,
-               NA,NA,3,NA,NA,
-               NA,1,NA,NA,NA,
-               7,NA,NA,NA,7)
-
-values <- values(r)
 
 disturb_raster <- function (values, nrow, ncol, years, output_interval = years, return_age = FALSE, return_ratio = TRUE){
   
@@ -33,35 +23,29 @@ disturb_raster <- function (values, nrow, ncol, years, output_interval = years, 
     } 
     
     
-    if((j %% output_interval) == 0){
-      
-      ## Output an age_matrix
-      if(return_age){
-        r <- raster(ncol = ncol, nrow = nrow)
-        results$age_matrix[[j]] <- raster_to_age_matrix(r) 
-      }
-      
-      ## Output an edge_to_interior ratio
-      if(return_ratio){
-        r <- raster(ncol = ncol, nrow = nrow)
-        results$ratio[[j]] <- get_ratio_basic(r, j)
-      }
-      
-      results$year[[j]] <- j
-      results$ages[[j]] <- unique(ages)
+    #if((j %% output_interval) == 0){
+    #  
+    #  ## Output an age_matrix
+    #  if(return_age){
+    #    r <- raster(ncol = ncol, nrow = nrow)
+    #    results$age_matrix[[j]] <- raster_to_age_matrix(r) 
+    #  }
+    #  
+    #  ## Output an edge_to_interior ratio
+    #  if(return_ratio){
+    #    r <- raster(ncol = ncol, nrow = nrow)
+    #    results$ratio[[j]] <- get_ratio_basic(r, j)
+    #  }
+    #  
+    #  results$year[[j]] <- j
+    #  results$ages[[j]] <- unique(ages)
+   # }
     
-    }
     
-    
-  print(j)
+ 
   } 
   
-  return(results)
+  return(ages)
 } ## takes raster and disturbs it for a number of years
-  
-test <- disturb_raster(values = values, nrow = 5, ncol = 5, years = 10)  
-test  
-  
-  
   
 
