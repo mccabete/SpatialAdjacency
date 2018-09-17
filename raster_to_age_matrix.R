@@ -12,6 +12,10 @@ values(r) <- c(NA,NA,NA,NA,NA,
                NA,NA,3,6,NA,
                NA,1,NA,NA,NA,
                NA,NA,NA,NA,NA)
+library(rlang)
+source("./edge_number.R")
+source("./corner_number.R")
+
 
 raster_to_age_matrix <- function(r) {
   ncol <- ncol(r)

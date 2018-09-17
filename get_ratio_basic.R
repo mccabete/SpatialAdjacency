@@ -6,6 +6,10 @@ values(r) <- c(6,NA,NA,NA,6,
                NA,NA,3,NA,NA,
                NA,1,NA,NA,NA,
                7,NA,NA,NA,7)
+library(raster)
+source("./edge_to_interior.R")
+source("./get_interior_vertices.R")
+source("./get_outer_edges.R")
 
 get_ratio_basic <- function ( r, date) {
     
