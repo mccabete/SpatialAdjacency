@@ -1,11 +1,4 @@
-r <- raster(ncol=5, nrow=5)
 
-
-values(r) <- c(6,NA,NA,NA,6,
-               NA,5,2,1,NA,
-               NA,NA,3,NA,NA,
-               NA,1,NA,NA,NA,
-               7,NA,NA,NA,7)
 library(raster)
 source("./edge_to_interior.R")
 source("./get_interior_vertices.R")
@@ -13,11 +6,17 @@ source("./get_outer_edges.R")
 
 get_ratio_basic <- function ( r, date) {
     
-    fire_only <- r
-    fire_clump <- clump(r, gaps = FALSE, directions = 4 )
-
+    ages <- unique(r)
+    results <- list()
+    results_final <- list()
+    
+for (j in seq_along(ages)){
+  fire_only <- r
+  fire_only[ fire_only != ages[j] ] <- NA
+    
+  fire_clump <- clump(fire_only, gaps = TRUE, directions = 4 )
   clump_num <- unique(fire_clump)
-  results <- list()
+  
   
   for ( i in seq_along(clump_num)){
     clump_id<-c(i, NA)
@@ -31,13 +30,18 @@ get_ratio_basic <- function ( r, date) {
     
     results$ratio[i] <- as.numeric(out$ratio)
     results$size[i] <- as.numeric(out$size)
+    results$age[i] <- ages[j]
+    results$clump_num[i] <- i
+    
+    results_final <- rbind(as.data.frame(results_final), as.data.frame(results))
+    results_final <- unique(results_final)
     rm(out)
     
-    
   }
-  results$Year <- rep(as.character(date), length(results$ratio))
   
-  results <- as.data.frame(results)
-  return(results)
+  }
+  
+    results_final$Year <- rep(as.character(date), length(results_final$ratio))
+  return(results_final)
 }
-test <- get_ratio_basic(r, "100")
+
