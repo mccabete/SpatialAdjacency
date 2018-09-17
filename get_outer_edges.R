@@ -51,14 +51,14 @@ get_outer_edges <- function(r, directions = 4, classes = FALSE, FRAME = FALSE, .
   new_index_r <- cbind( values(r), seq(1:ncell(r)))
   new_index_r <- na.omit(new_index_r) ## need a new index
   
-  tmp_bound_r<-values(bound_r)
+  tmp_bound_r <- values(bound_r) ## How are zeros introduced 
   tmp_bound_r[tmp_bound_r ==0] <- NA
   
   Adjacent <- cbind(tmp_bound_r, 1:ncell(bound_r))
   Adjacent <- na.omit(Adjacent)
   
   ## get the adjacentcy 
-  touching<-adjacent(r, cells = new_index_r[,2] ,directions = 4, target =    Adjacent[,2])
+  touching <- adjacent(r, cells = new_index_r[,2] ,directions = 4, target = Adjacent[,2])
   
   outer_edges$cells <- touching
   outer_edges$number <- length(touching[,1])

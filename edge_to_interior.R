@@ -2,8 +2,8 @@ edge_to_interior<- function(r, ...){
   
   results <- list()  
   
-  outer<- get_outer_edges(r)
-  inner<- get_interior_vertices(r)
+  outer <- get_outer_edges(r)
+  inner <- get_interior_vertices(r)
   
   if(outer$size <= 1){
     ratio <- 0

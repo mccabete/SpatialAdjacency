@@ -44,7 +44,7 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
     
     
     out <- edge_to_interior(clump)
-    dist_number <- unique(stack$US_DIST2000.US_DIST2000[stack$clumps == i])
+    dist_number <- unique(stack$US_DIST2014.US_DIST2014[stack$clumps == i])
     
     dist_names <- droplevels(csv_fire$Dist_Type[csv_fire$Value %in% dist_number])
     dist_names <- unique(dist_names)
