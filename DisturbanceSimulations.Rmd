@@ -1,0 +1,21 @@
+---
+title: "Simulate Disturbances"
+author: "Dietze"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+### gap disturbance
+nrow = 100
+ncol = 100
+ages = matrix(0,nrow,ncol)
+p.init= 0.1
+ages = gap_disturb_raster(ages,p.init,1000)
+image(log10(ages))
+hist(ages,probability = TRUE)
+```
+
