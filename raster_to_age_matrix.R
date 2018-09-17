@@ -7,11 +7,15 @@
 r <- raster(ncol=5, nrow=5)
 
 
-values(r) <- c(6,NA,NA,NA,6,
+values(r) <- c(NA,NA,NA,NA,NA,
                NA,5,2,1,NA,
-               NA,NA,3,NA,NA,
+               NA,NA,3,6,NA,
                NA,1,NA,NA,NA,
-               7,NA,NA,NA,7)
+               NA,NA,NA,NA,NA)
+library(rlang)
+source("./edge_number.R")
+source("./corner_number.R")
+
 
 raster_to_age_matrix <- function(r) {
   ncol <- ncol(r)
@@ -21,6 +25,7 @@ raster_to_age_matrix <- function(r) {
   background <- total_area - length(na.omit(vals))
   age_classes <- unique(vals)
   age_classes <- as.character(age_classes)
+  age_classes <- sort(age_classes, na.last = TRUE)
   
   ## Make empty age matrix
   age_matrix <- matrix(nrow = length(age_classes), ncol = length(age_classes))
@@ -105,6 +110,8 @@ raster_to_age_matrix <- function(r) {
       #cat( age_main,"adjacent to",age_small,"Percent",percent, count_small, "Total possible adjacent", count*4)
       age_matrix[j,i] <- percent
       
+      # Order age matrix by increasing value if class is numeric
+      
       
       
       } # for loop 
@@ -116,3 +123,4 @@ return (age_matrix)
 }
 
 test<- raster_to_age_matrix(r)
+test
