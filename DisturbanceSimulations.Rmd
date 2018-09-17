@@ -43,3 +43,17 @@ aggAdj <- apply(br,2,tapply,colage,sum)
 aggAdj  ## aggregated adjacency matrix
 ```
 
+
+## Simulate contagious disturbance
+```{r}
+### gap disturbance
+nrow = 100
+ncol = 100
+years = 300
+ages = matrix(0,nrow,ncol)
+p.init= 0.01
+ps = 0.25
+ages = contagion_disturb_raster(ages,p.init,ps,years)
+image(log10(ages))
+hist(ages,probability = TRUE)
+```
