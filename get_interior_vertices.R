@@ -37,19 +37,18 @@ get_interior_vertices <- function(r, directions = 4, classes = FALSE, FRAME = FA
     
     
     r<- raster(nrows = r_nrow+2, ncol = r_ncol +2, vals = as.matrix(n_vals))
+    
   }
   
   
   
-  ## account for every time the outher boundary touches the raster itself
-  
-  ## Prep the indexes
   new_index_r <- cbind( values(r), seq(1:ncell(r)))
   new_index_r <- na.omit(new_index_r) ## need a new index
   
   
+  
   ## get the adjacentcy 
-  touching<-adjacent(r, cells = new_index_r[,2] ,directions = 4, target =   new_index_r[,2])
+  touching <- adjacent(r, cells = new_index_r[,2] ,directions = 4, target =   new_index_r[,2])
   
   interior_vertices$cells <- touching
   interior_vertices$number <- length(touching[,1])
