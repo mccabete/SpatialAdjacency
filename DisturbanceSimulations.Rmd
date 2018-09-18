@@ -9,13 +9,51 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+library(rlang)
+library(raster)
+### gap disturbance
+nrow = 10
+ncol = 10
+ntime = 100
+ages = matrix(0,nrow,ncol)
+p.init= 0.01
+ages = gap_disturb_raster(ages,p.init,ntime)
+image(log10(ages))
+hist(ages,probability = TRUE)
+r <- raster::raster(ncol=ncol, nrow=ncol)
+raster::values(r) <- ages
+foo <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
+
+test <- raster_to_age_matrix(r)
+
+## sort and aggregate adjacency matrix
+n = 10
+dn = 10
+
+ord <- order(as.numeric(rownames(test)))
+br <- test[ord,] ## sort by row
+sorted <- br[,ord] ## sorted adjacency matrix
+
+
+colage <- as.numeric(colnames(sorted))
+colage <- ceiling(colage/dn)
+colage[colage>n] <- n
+br <- t(apply(sorted,1,tapply,colage,sum))
+aggAdj <- apply(br,2,tapply,colage,sum)
+aggAdj  ## aggregated adjacency matrix
+```
+
+
+## Simulate contagious disturbance
+```{r}
 ### gap disturbance
 nrow = 100
 ncol = 100
+years = 300
 ages = matrix(0,nrow,ncol)
-p.init= 0.1
-ages = gap_disturb_raster(ages,p.init,1000)
+p.init= 0.01
+ps = 0.25
+ages = contagion_disturb_raster(ages,p.init,ps,years)
 image(log10(ages))
 hist(ages,probability = TRUE)
 ```
-
