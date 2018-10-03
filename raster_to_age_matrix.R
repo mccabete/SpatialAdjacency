@@ -7,7 +7,7 @@
 r <- raster(ncol=5, nrow=5)
 
 
-values(r) <- c(NA,NA,NA,NA,NA,
+values(r) <- c(12,NA,NA,NA,NA,
                NA,5,2,1,NA,
                NA,NA,3,6,NA,
                NA,1,NA,NA,NA,
@@ -42,7 +42,7 @@ raster_to_age_matrix <- function(r) {
   ## Make a list of cell numbers for every age class
   cell_numbers <- list()
   for(i in seq_along(age_classes)){
-    #tmp <- r
+    
     just_num <- vals
     if (!is.na(age_classes[i])){
       just_num[ just_num != age_classes[i]] <- NA
@@ -72,9 +72,10 @@ raster_to_age_matrix <- function(r) {
       age_small <- unique(as.numeric(cell_numbers[[i]][,2]))
       
       
-      adj <- adjacent(r, cells = cell_num_main,target = cell_num_small)
+      adj <- adjacent(r, cells = cell_num_main,target = cell_num_small) # How much is the main adj to the small
       corner_indecies <- corner_number(nrow, ncol, give_indexes = TRUE)
       adj_corners <- unique(adj[adj %in% corner_indecies])
+      adj_corners <- as.matrix(adj_corners)
      
       
       if ( is.na(age_main)){
@@ -91,14 +92,20 @@ raster_to_age_matrix <- function(r) {
       
       if (is_empty(adj)){
         count_small <- 0
-      }else {
-        if (length(adj) <= 2){
-          count_small <- length(adj[1]) - (2*length(adj_corners))
-        }else{
-          count_small <- length(adj[,1])  - (2*length(adj_corners))
+      
+      }else{
+        
+        if (length(adj[1]) > length(adj_corners[1,])) {
+          count_small <- length(adj[1]) - (2*length(adj_corners[1,]))
         }
+        if (length(adj[1]) == length(adj_corners[1,])) {
+          count_small <- 0 # this may be wrong
+          print("The only adjacentcies were wrap-around adjacentcies. Setting to zero.")
+        }  
         
       }
+      
+      
       
       ## get total possible adjacentcies (accounting for corners and boarders)
       edge <- edge_number(nrow, ncol, index_vector = cell_num_main)
@@ -106,11 +113,9 @@ raster_to_age_matrix <- function(r) {
       total_possible <- ((length(cell_num_main) - (edge + corner))*4) + (edge * 3) + (corner*2)
     
       
-      percent <- count_small / (total_possible) # multiplying count times four becuase each cell has 4 edges
+      percent <- count_small / (total_possible) # multiplying count by four becuase each cell has 4 edges
       #cat( age_main,"adjacent to",age_small,"Percent",percent, count_small, "Total possible adjacent", count*4)
       age_matrix[j,i] <- percent
-      
-      # Order age matrix by increasing value if class is numeric
       
       
       

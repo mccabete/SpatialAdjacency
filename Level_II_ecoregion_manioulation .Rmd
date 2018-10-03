@@ -41,8 +41,50 @@ library(rgdal)
 
 tiny_adf <- rgdal::readGDAL(fname = "~/Downloads/LANDFIRE/HI_Dist2011/Grid/hi_dist2011/") 
 
+test_florida_tif <- rgdal::readGDAL(fname = "~/Downloads/LANDFIRE/croped_florida.tif") 
+test_florida_tif <- raster(test_florida_tif)
+
 csv<-read.csv("/Users/tess/Downloads/LANDFIRE/US_DIST2000/CSV_Data/US_disturb2000.csv")
 tiny_adf <- raster(tiny_adf)
 #HI_ratios <- get_ratio_dist(tiny_adf, date="2011", csv = csv)
+
+plot(tiny_adf)
+
+### Crop by an ecoregion
+
+
+
+state <- getData("GADM", country="USA", level=1)
+mystates <- c("Hawaii")
+Hawaii <- state[as.character(state@data$STATE_NAME) %in% mystates, ]
+
+#crs(Hawaii) <- crs(tiny_adf)
+ Hawaii <- projectRaster(tiny_adf,Hawaii, res(tiny_adf), crs(tiny_adf))
+ Hawaii <- rgdal::spTRansform(Hawaii, crs(tiny_adf))
+subset_h <- crop(tiny_adf, extent(Hawaii))
+```
+Reading in a small raster file that should be in the extent of ecoregions. Tried to eye-ball getting it to be on boarder of both ecoregions. Might not be. 
+
+```{r}
+florida_patch <- raster("~/Downloads/LANDFIRE/Florida_both_83_and_85_US_DIST2014/US_DIST2014\\US_DIST2014.tif")
+#florida_patch <- raster(florida_patch)
+
+eco_II<- rgdal::readOGR("~/Documents/work/na_cec_eco_l2/NA_CEC_Eco_Level2.shp")
+
+
+Southern_coastal_plains <- eco_II[eco_II$NA_L2NAME == "MISSISSIPPI ALLUVIAL AND SOUTHEAST USA COASTAL PLAINS", ]
+#plot(Southern_coastal_plains)
+
+Southern_coastal_plains <- spTransform(Southern_coastal_plains, crs(florida_patch))
+crs(Southern_coastal_plains) <- crs(florida_patch)
+
+
+
+croped <- crop(florida_patch, extent(Southern_coastal_plains))
+masked <- mask(florida_patch, mask = Southern_coastal_plains, inverse=TRUE)
+
+writeRaster(masked, "~/Downloads/LANDFIRE/croped_florida.tif")
+
+
 
 ```
