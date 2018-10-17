@@ -4,6 +4,13 @@ source("./edge_to_interior.R")
 source("./get_interior_vertices.R")
 source("./get_outer_edges.R")
 
+r <- raster(ncol=5, nrow=5)
+values(r) <- c(NA,NA,NA,NA,NA,
+               NA,2,2,2,NA,
+               NA,2,2,2,NA,
+               NA,NA,NA,NA,NA,
+               NA,NA,NA,NA,NA)
+
 get_ratio_basic <- function ( r, date) {
     
     ages <- unique(r)
