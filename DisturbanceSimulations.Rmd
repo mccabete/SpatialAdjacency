@@ -8,52 +8,577 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, fig.asp=1}
 library(rlang)
 library(raster)
 ### gap disturbance
-nrow = 10
-ncol = 10
-ntime = 100
+nrow = 1000  ## 1000 takes ~60 sec
+ncol = nrow
+ntime = 1000
 ages = matrix(0,nrow,ncol)
 p.init= 0.01
+
+## run simulation
+start = proc.time()
 ages = gap_disturb_raster(ages,p.init,ntime)
-image(log10(ages))
-hist(ages,probability = TRUE)
-r <- raster::raster(ncol=ncol, nrow=ncol)
-raster::values(r) <- ages
-foo <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
+proc.time()-start
 
-test <- raster_to_age_matrix(r)
+# Map
+image(log10(ages),xlab="",ylab="",xaxt="n",yaxt="n",asp=1)
 
-## sort and aggregate adjacency matrix
+## age distribution
+nt=300
+time = 0:nt
+hist(ages+0.001,probability = TRUE,xlim=c(0,nt),breaks=nt,xlab="Age (years)",main="Gap Dynamics")
+lines(time,dgeom(time,p.init),col=3,lwd=3,type='s')
+
+## aggregate age classes
 n = 10
 dn = 10
+ac <- floor(ages/dn)
+ac[ac>n] <- n
+hist(ac)
 
+## calculate adjacency matrix
+start = proc.time()
+r <- raster::raster(ncol=ncol, nrow=ncol)
+raster::values(r) <- ac #ages
+#foo <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
+test <- raster_to_age_matrix(r)
+proc.time()-start  ## took ~2 min at 1000x and 10 classes
+
+
+## sort adjacency matrix
 ord <- order(as.numeric(rownames(test)))
 br <- test[ord,] ## sort by row
 sorted <- br[,ord] ## sorted adjacency matrix
+sorted <- sorted[,!is.na(colnames(sorted))]
+sorted <- sorted[!is.na(rownames(sorted)),]
 
+## display matrix
+image(1:nrow(sorted), 1:ncol(sorted), log(sorted[,ncol(sorted):1]),col=terrain.colors(30), 
+      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+axis(3, 1:nrow(sorted), colnames(sorted)) ## top label
+axis(2, ncol(sorted):1, rownames(sorted))
+for (y in 1:ncol(sorted))
+  for (x in 1:nrow(sorted))
+    text(x, ncol(sorted)-y+1, format(sorted[x,y],digits=2),cex=2)
 
-colage <- as.numeric(colnames(sorted))
-colage <- ceiling(colage/dn)
-colage[colage>n] <- n
-br <- t(apply(sorted,1,tapply,colage,sum))
-aggAdj <- apply(br,2,tapply,colage,sum)
-aggAdj  ## aggregated adjacency matrix
+## if needed, aggregate the matrix
+## this code was developed when age wasn't aggregated first
+if(FALSE){
+  colage <- as.numeric(colnames(sorted))
+  colage <- ceiling(colage/dn)
+  colage[colage>n] <- n
+  br <- t(apply(sorted,1,tapply,colage,sum))
+  aggAdj <- apply(br,2,tapply,colage,sum)
+  aggAdj  ## aggregated adjacency matrix
+}
+
+#save simulations for later
+ages.gap = ages
+save(ages.gap,file="ages.gap.RData")
 ```
 
 
 ## Simulate contagious disturbance
-```{r}
-### gap disturbance
-nrow = 100
-ncol = 100
-years = 300
+```{r, fig.asp=1}
+### contagious disturbance
+nrow = 1000
+ncol = nrow
+years = 1000
 ages = matrix(0,nrow,ncol)
 p.init= 0.01
 ps = 0.25
-ages = contagion_disturb_raster(ages,p.init,ps,years)
-image(log10(ages))
-hist(ages,probability = TRUE)
+
+## simulation
+sfile = "ages.spread.RData"
+if(file.exists(sfile)){
+  load(sfile)
+} else {
+  start = proc.time()
+  ages.spread = contagion_disturb_raster(ages,p.init,ps,years)
+  save(ages.spread,file=sfile)
+  proc.time()-start ## 1000x landscape for 1000 timesteps took ~1.5hr
+}
+
+## full image
+image(1:nrow,1:ncol, log10(ages.spread),xlab="",ylab="",asp=1)
+rect(800,800,900,900,col=NA,lwd=2)
+
+## inset image
+image(800:900,800:900,log10(ages.spread[800:900,800:900]),xlab="",ylab="",asp=1)
+
+## age distribution
+nt=100
+time = 0:nt
+hist(ages.spread+0.0001,probability = TRUE,xlim=c(0,nt),breaks=0:years,xlab="Age (years)",main="Contagious Spread")
+#lines(time,dgeom(time,1/mean(ages.spread)),col=3,lwd=3,type='s')
+lines(time,dgeom(time,p.init/ps),col=3,lwd=3,type='s')
+
+## rate
+1/mean(ages.spread) ## emergent
+(1/mean(ages.spread))/p.init ## normed by initation
+## would be good to figure out the math on this -- seems like it should be NB(4,ps)
+## which has an expected value of ps*4/(1-ps), but that ends up being too small
+## because it fails to account that each successful spread then has 3 neighboors
+
+
+## aggregate age classes
+n = 10
+dn = 10
+asc <- floor(ages.spread/dn)
+asc[asc>n] <- n
+hist(asc)
+
+## calculate adjacency matrix
+safile = "adj.spread.RData"
+if(file.exists(safile)){
+  load(safile)
+} else {
+  start = proc.time()
+  r <- raster::raster(ncol=ncol, nrow=ncol)
+  raster::values(r) <- asc #ages
+  test <- raster_to_age_matrix(r)
+  save(test,file=safile)
+  proc.time()-start  ## took 21 sec at 1000x and 10 classes
+}
+
+## sort adjacency matrix
+ord <- order(as.numeric(rownames(test)))
+br <- test[ord,] ## sort by row
+sorted <- br[,ord] ## sorted adjacency matrix
+sorted <- sorted[,!is.na(colnames(sorted))]
+sorted <- sorted[!is.na(rownames(sorted)),]
+
+## display matrix
+image(1:nrow(sorted), 1:ncol(sorted), log(sorted[,ncol(sorted):1]),col=terrain.colors(30), 
+      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+axis(3, 1:nrow(sorted), colnames(sorted)) ## top label
+axis(2, ncol(sorted):1, rownames(sorted))
+for (y in 1:ncol(sorted))
+  for (x in 1:nrow(sorted)){
+    a = sorted[x,y]
+    a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
+    text(x, ncol(sorted)-y+1, a,cex=1)
+  }
+
+## diagonal decay
+plot(0:n,diag(sorted),ylim=c(0,sorted[1,1]))
+rate = diag(sorted)
+rate = mean((rate[-1]/rate[-(n+1)])[-n])
+decay = sorted[1,1]*rate^(0:n)
+decay[n+1] = decay[n+1]+ sorted[1,1]*sum(rate^((n+1):1000))/sum(rate^(0:1000))  ## last class should be tail cumulative
+lines(0:n,decay)
+lines(0:n,sorted[1,],col=2)
+lines(0:n,sorted[4,],col=3)
+lines(0:n,sorted[9,],col=4)
+
+
+# verifying that rows sum to 1
+apply(sorted,1,sum)
+
+
 ```
+
+Do we get the size distribution of disturbances correct
+```{r, fig.asp=1}
+
+newD <- ceiling(ages.spread/years) ## split map into binary 0 = this year's disturbance, 1 = older
+image(newD)
+
+## calculate disturbance sizes
+ndfile = "newD.RData"
+if(file.exists(ndfile)){
+  load(ndfile)
+} else {
+  start = proc.time()
+  r <- raster::raster(ncol=ncol, nrow=ncol)
+  raster::values(r) <- 1-newD
+  foo <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
+  proc.time()-start
+  save(foo,file=ndfile)
+}
+
+## simulated size distribution
+sz <- graphics::hist(foo$size,probability=TRUE,main="Disturbance size distribution",breaks=1:max(foo$size))
+
+## simulated cumulative disturbance distribution
+nz <- length(sz$breaks)
+plot(sz$breaks[-nz],cumsum(sz$breaks[-nz]*sz$counts)*100/(nrow*ncol),type='s',xlab="Disturbance size (pixels)",ylab="Cumulative Area Disturbed (%)")
+
+## Analytical disturbance approximation
+A = sorted
+I = matrix(0,n+1,nz)
+PS = 1-dbinom(0,4,ps)
+PS = 0.705
+f.area = table(asc)/(nrow*ncol)
+I[,1] = p.init * f.area ## this should be multiplied by initial fractional areas
+for(k in 2:nz){
+  I[,k] = I[,k-1]%*%(PS*A)
+}
+#plot(1:nz,apply(I,2,sum))
+#lines(sz$mids,sz$density)
+
+## cumulative
+Ai = apply(I,2,sum)
+Aid = c(-diff(Ai),Ai[length(Ai)])
+Aid = Aid * (1:nz)
+#plot(cumsum(Aid))
+
+plot(sz$breaks[-nz],cumsum(sz$breaks[-nz]*sz$counts)*100/(nrow*ncol),type='s',xlab="Disturbance size (pixels)",ylab="Cumulative Area Disturbed (%)")
+lines(1:nz,cumsum(Aid)*100,type='s',col=2)
+
+## simulated curve accumulates too fast
+## am I missing something to do with multiple trials at each size
+## or is it something to do with random disturbances aggregating geometrically?
+
+D = sz$breaks[-nz]*sz$counts/(nrow*ncol)
+D[2:(nz)]/D[1:(nz-1)]
+
+
+```
+
+
+
+Starting from a disturbance map, run the simulation forward one time step (multiple times) for a special case (e.g. initiation only occurring in a specific age class) to see if spatial adjacency approximation can correctly capture the area disturbed and the cumulative size distribution.
+
+```{r}
+age0 = ages
+```
+
+
+```{r}
+## generate a few more disturbance realizations
+adj.dist <- list()
+ad.hist <- list()
+
+## simulation
+j = 1
+sfile = paste0("spread.",j,".RData")
+if(file.exists(sfile)){
+  load(sfile)
+} else {
+  start = proc.time()
+  spread = contagion_disturb_raster(matrix(0,nrow,ncol),p.init,ps,1)
+  r <- raster::raster(ncol=ncol, nrow=nrow)
+  raster::values(r) <- 1-spread
+  adj.dist[[j]] <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
+  proc.time()-start
+  save(adj.dist,file=sfile)
+}
+  
+ad.hist[[j]] <- graphics::hist(adj.dist[[j]]$size,probability=TRUE,main="Disturbance size distribution",breaks=1:max(adj.dist[[j]]$size))
+
+## simulated cumulative disturbance distribution
+nzj <- length(ad.hist[[j]]$breaks)
+plot(sz$breaks[-nz],cumsum(sz$breaks[-nz]*sz$counts)*100/(nrow*ncol),
+type='s',xlab="Disturbance size (pixels)",ylab="Cumulative Area Disturbed (%)")
+lines(ad.hist[[j]]$breaks[-nzj],cumsum(ad.hist[[j]]$breaks[-nzj]*ad.hist[[j]]$counts)*100/(nrow*ncol),col="grey",type="s")
+      
+```
+
+```{r}
+if(FALSE){
+## Can the model be calibrated to get total area correct?
+Ps <- seq(0,0.3,by=0.025)
+np <- length(Ps)
+area_sim <- area_calc <- area_calcbin <- rep(NA,np)
+for(i in seq_along(Ps)){
+  print(paste(i,"of",np,": ",Ps[i]))
+  
+  ## simulated map
+  area_sim[i] <- sum(1-contagion_disturb_raster(matrix(0,nrow,ncol),p.init,Ps[i],1))
+
+  ## run analytical approximation
+  I = Ib = rep(0,100)
+  PS = 1-dbinom(0,4,Ps[i])
+  I[1] = Ib[1] = p.init ## this should be multiplied by initial fractional areas
+  for(k in 2:nz){
+    I[k] = I[k-1]*Ps[i]
+    Ib[k] = Ib[k-1]*PS
+  }
+  area_calc[i] <- sum(I)
+  area_calcbin[i] <- sum(Ib)
+}
+
+}
+plot(Ps,area_sim/(nrow*ncol),log='y',type='b',lwd=2,cex.lab=1.5,
+     xlim=c(0,0.3),xlab="Spread probability",ylab="Fraction of landscape disturbed")
+#lines(Ps,area_calc,col=2)
+lines(Ps,area_calcbin,col=3,lwd=2)
+legend("topleft",lwd=2,col=c(1,3),legend=c("Simulation","Analytical"),cex=1.2)
+
+### also, for a heterogeneous map, do we get the _relative_ fractional areas right?
+```
+
+**Forward simulation of adjacency and fractional area**
+```{r}
+nt = 1000 ## number of time steps
+na = 100 ## number of age classes for forward simulation
+nk = 100 ## number of steps to model spread (max disturbance size)
+p.init = 0.01
+ps = 0.10
+Ps = 1-dbinom(0,4,ps)
+A = array(0,c(na,na,nt))  ## adjacency matrix (through time)
+f = matrix(0,na,nt)  ## fractional area vector (through time)
+## initialize at age 0
+## note indexing in code is one off from paper because R doesn't like zero indexing
+A[1,1,1] = 1 
+f[1,1] = 1
+
+## calculate adjacency look up
+ndfile = "newD.RData"
+load(ndfile)
+adj.raw <- tapply(foo$ratio,foo$size,mean)
+adj <- rep(NA,nk)
+adj[as.numeric(names(adj.raw))] <- adj.raw
+adj.approx <- approx(as.numeric(names(adj.raw)),adj.raw,xout = 1:nk)
+isna <- which(is.na(adj))
+adj[isna] <- adj.approx$y[isna]
+adj[which(is.na(adj))] <- max(adj,na.rm = TRUE)
+plot(adj,type='l')
+points(as.numeric(names(adj.raw)),adj.raw,col=2)
+
+
+for(t in 1:(nt-1)){
+  
+  ## calculate disturbance
+  I <- matrix(0,nk,na)  ## storage of ignition
+  I[1,] <- p.init*f[,t] ## disturbance initiation
+  for(k in 1:(nk-1)){
+    I[k+1,] = I[k,]%*%(Ps*A[,,t])
+  }
+  D <- apply(I,2,sum)
+  
+  ## update fractional areas
+  f[1,t+1] <- sum(D) ## newly disturbed area is the sum of disturbances by age class
+  for(k in 2:na){
+    f[k,t+1] <- max(f[k-1,t]-D[k-1],0)
+  }
+  f[na,t+1] <- max(f[na,t+1] + f[na,t] - D[na],0) ## end case: merge
+  
+  ## calculate disturbance size distribution (todo: by age class)
+  Ai = apply(I,1,sum)
+  Aid = c(-diff(Ai),Ai[nk])
+  Aid = Aid * (1:nk)
+  if(FALSE){
+     plot(Aid)
+     plot(cumsum(Aid))
+  }
+  
+  ## update A00
+  sps <- (1:nk)*Aid
+  num <- (adj+f[1,t+1]*(1-adj))*sps
+  A00 <- sum(num)/sum(sps)
+  A[1,1,t+1] <- A00
+  
+  ## update disturbed adjacent to non-disturbed
+  for(k in 2:na){
+    A[1,k,t+1] <- D[k-1]/sum(D)*(1-A00)  ## it's possibly this should be a weighted average (by f_area)
+  }
+  A[1,na,t+1] <- A[1,na,t+1] + D[na]/sum(D)*(1-A00)
+  
+  ## update non-disturbed adjacent to non-disturbed
+  for(j in 2:na){
+    for(k in 2:na){
+      A[j,k,t+1] <- ifelse(f[j-1,t]>0,A[j-1,k-1,t]*(1-D[j-1]/f[j-1,t]),0) ## D/f is a hack that's not in the derivation
+    }
+    A[j,na,t+1] <- A[j,na,t+1] + ifelse(f[na,t]>0,A[j-1,na,t]*(1-D[na]/f[na,t]),0) ## sum by row
+  }
+  A[na,,t+1] <- (A[na,,t+1] + A[na,,t]*ifelse(f[na,t]>0,(1-D[na]/f[na,t]),0))/2 ## average by col  *** should be a weighted average by fractional area
+  
+  ## update non-disturbed adjacent to disturbed
+  for(j in 2:na){
+    #A[j,1,t+1] <- D[j-1]/f[j-1,t]#1 - sum(A[j,,t+1])
+    A[j,1,t+1] <- ifelse(f[j,t+1]>0,max(0,1 - sum(A[j,,t+1])),0)
+  }
+#  A[j,1,t+1] <- A[j,1,t+1] + D[na]#/f[na,t]
+  
+  if(t%%100 == 0) print(t)
+}
+
+image(1:na, 1:na, log(A[,na:1,t+1]),col=terrain.colors(30), 
+      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+
+## aggregate to decade
+  colage <- ceiling(1:na/dn)
+  colage[colage>n] <- n
+  br <- t(apply(A[,,t],1,tapply,colage,sum))
+  aggAdj <- apply(br,2,tapply,colage,mean)
+  aggAdj  ## aggregated adjacency matrix
+
+## display matrix
+image(1:n, 1:n, log(aggAdj[,n:1]),col=terrain.colors(30), 
+      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+axis(3, 1:n, 1:n) ## top label
+axis(2, n:1, 1:n)
+for (y in 1:n)
+  for (x in 1:n){
+    a = aggAdj[x,y]
+    a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
+    text(x, n-y+1, a,cex=1)
+  }
+  
+```
+
+
+## Compare math of adj to simulation
+```{r, fig.asp=1}
+### contagious disturbance
+nrow = 1000
+ncol = nrow
+years = 1000
+
+## simulation
+s10file = "ages.spread10.RData"
+if(file.exists(s10file)){
+  load(s10file)
+} else {
+  start = proc.time()
+  ages.spread10 = contagion_disturb_raster(matrix(0,nrow,ncol),p.init,ps,years)
+  save(ages.spread10,file=s10file)
+  proc.time()-start ## 1000x landscape for 1000 timesteps took ~1.5hr
+}
+
+## full image
+image(1:nrow,1:ncol, log10(ages.spread10),xlab="",ylab="",asp=1)
+rect(800,800,900,900,col=NA,lwd=2)
+
+## inset image
+image(800:900,800:900,log10(ages.spread10[800:900,800:900]),xlab="",ylab="",asp=1)
+
+## age distribution
+nt=100
+time = 0:nt
+hist(ages.spread10+0.0001,probability = TRUE,xlim=c(0,nt),breaks=0:years,xlab="Age (years)",main="Contagious Spread")
+lines(time,dgeom(time,1/mean(ages.spread10)),col=3,lwd=3,type='s')
+#lines(time,dgeom(time,p.init/ps),col=3,lwd=3,type='s')
+
+## rate
+1/mean(ages.spread10) ## emergent
+(1/mean(ages.spread10))/p.init ## normed by initation
+## would be good to figure out the math on this -- seems like it should be NB(4,ps)
+## which has an expected value of ps*4/(1-ps), but that ends up being too small
+## because it fails to account that each successful spread then has 3 neighboors
+
+
+## aggregate age classes
+n = 10
+dn = 10
+asc <- floor(ages.spread10/dn)
+asc[asc>n] <- n
+hist(asc)
+
+## calculate adjacency matrix
+sa10file = "adj.spread10.RData"
+if(file.exists(sa10file)){
+  load(sa10file)
+} else {
+  start = proc.time()
+  r <- raster::raster(ncol=ncol, nrow=ncol)
+  raster::values(r) <- asc #ages
+  test10 <- raster_to_age_matrix(r)
+  save(test10,file=sa10file)
+  proc.time()-start  ## took 21 sec at 1000x and 10 classes
+}
+
+## sort adjacency matrix
+ord <- order(as.numeric(rownames(test10)))
+br <- test10[ord,] ## sort by row
+sort10 <- br[,ord] ## sorted adjacency matrix
+sort10 <- sort10[,!is.na(colnames(sort10))]
+sort10 <- sort10[!is.na(rownames(sort10)),]
+
+## display matrix
+image(1:nrow(sort10), 1:ncol(sort10), log(sort10[,ncol(sort10):1]),col=terrain.colors(30), 
+      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+axis(3, 1:nrow(sort10), colnames(sort10)) ## top label
+axis(2, ncol(sort10):1, rownames(sort10))
+for (y in 1:ncol(sort10))
+  for (x in 1:nrow(sort10)){
+    a = sort10[x,y]
+    a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
+    text(x, ncol(sort10)-y+1, a,cex=1)
+  }
+
+## display analytical matrix
+image(1:nrow(aggAdj), 1:ncol(aggAdj), log(aggAdj[,ncol(aggAdj):1]),col=terrain.colors(30), 
+      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+axis(3, 1:nrow(aggAdj), colnames(aggAdj)) ## top label
+axis(2, ncol(aggAdj):1, rownames(aggAdj))
+for (y in 1:ncol(aggAdj))
+  for (x in 1:nrow(aggAdj)){
+    a = aggAdj[x,y]
+    a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
+    text(x, ncol(aggAdj)-y+1, a,cex=1)
+  }
+
+## diagonal decay
+plot(0:n,diag(sort10),ylim=c(0,sort10[1,1]))
+rate = diag(sort10)
+rate = mean((rate[-1]/rate[-(n+1)])[-n])
+decay = sort10[1,1]*rate^(0:n)
+decay[n+1] = decay[n+1]+ sort10[1,1]*sum(rate^((n+1):1000))/sum(rate^(0:1000))  ## last class should be tail cumulative
+lines(0:n,decay)
+lines(0:n,sort10[1,],col=2)
+lines(0:n,sort10[4,],col=3)
+lines(0:n,sort10[9,],col=4)
+
+
+# verifying that rows sum to 1
+apply(sort10,1,sum)
+
+```
+
+
+Sorting through spread probability
+```{r}
+
+## prob of spreading 1 or more = 1-prob not spreading
+## --------------------------------------------------
+Ps1 = 1-dbinom(0,4,ps) # = 1-pbinom(0,4,ps)
+
+
+## probability of spreading 2 or more | 1
+## --------------------------------------------------
+
+# from the original cell with adj A
+Ps2.1 = 1-pbinom(1,4,ps) # = dbinom(2,4,ps)+dbinom(3,4,ps)+dbinom(4,4,ps)
+
+# from the second cell with adj A^2
+Ps2.2 = 1-pbinom(0,3,ps)
+
+# how are these two combined? does the second need to be downweighted by ps?
+Ps2.1 + Ps2.2
+
+## probability of spreading 3 or more | 2
+## --------------------------------------------------
+
+# from the original cell with A
+Ps3.1 = 1-pbinom(2,4,ps)
+
+# from an A^2 cell
+Ps3.2 = 2*(1-pbinom(0,3,ps)) + (1-pbinom(1,3,ps))
+
+# from an A^3 cell
+Ps3.3 = 1-pbinom(0,3,ps)
+
+Ps3.1 + Ps3.2 + Ps3.3
+
+## probability of spreading 4 or more | 3
+
+Ps4.1 = 1-pbinom(3,4,ps)
+
+Ps4.2 = ... etc
+
+## what are all the ways of achieving an A^1 spread?
+Ps1 + Ps2.1 + Ps3.1 + Ps4.1
+
+## what are all the ways of achieving A^2 spread?
+Ps2.2 + Ps3.2 + Ps4.2 + ... + Ps8.2
+## 4 outwardly expanding cases
+## 8 cases where a cell has 2 possible paths
+
+```
+
