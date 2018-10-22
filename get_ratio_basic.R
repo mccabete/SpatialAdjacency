@@ -6,16 +6,17 @@ source("./get_outer_edges.R")
 
 if(FALSE){
   ## used for testing, but dangerous to `source` as it may delete your data
-  r <- raster(ncol=5, nrow=5)
-  values(r) <- c(NA,NA,NA,NA,NA,
+r <- raster(ncol=5, nrow=5)
+values(r) <- c(NA,0, 0,NA,NA,
+               NA,2,3,2,NA,
                NA,2,2,2,NA,
-               NA,2,2,2,NA,
-               NA,NA,NA,NA,NA,
+               NA,0,NA,NA,NA,
                NA,NA,NA,NA,NA)
 }
 
-get_ratio_basic <- function ( r, date) {
-    
+get_ratio_basic <- function ( r, date = NA) {
+  
+    values(r) <- values(r) +1 #If zero's exist, want them to be offical age class
     ages <- unique(r)
     results <- list()
     results_final <- list()
@@ -46,12 +47,15 @@ for (j in seq_along(ages)){
     results_final <- rbind(as.data.frame(results_final), as.data.frame(results))
     results_final <- unique(results_final)
     rm(out)
-    
+  
   }
   
   }
   
     results_final$Year <- rep(as.character(date), length(results_final$ratio))
+    
+    age_correction <- rep(1, length(results$age))
+    results_final$age <- results_final$age - age_correction # returning to orginal values post adjacentcy
   return(results_final)
 }
 

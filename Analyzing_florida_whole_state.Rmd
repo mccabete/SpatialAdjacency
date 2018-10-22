@@ -330,13 +330,15 @@ for ( i in 1:6){
 sig <- rep(NA, 6^2)
 for (i in 1:(6^2)){
   
-  if(size_dist_resulsts[[i]]$p.value < 0.001388889) { # post Bonferoni correction alpha value
+  if(size_dist_resulsts[[i]]$p.value < 0.00131579) { # post Bonferoni correction alpha value (0.05/ 38)
    sig[i] <- paste(size_dist_resulsts[[i]]$names)
   }
     
 }
 
 ks.test(dist_size[,2], dist_size[,3], alternative = "two.sided")
+
+
 
 
 
