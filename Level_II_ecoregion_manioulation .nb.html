@@ -179,30 +179,76 @@ $(document).ready(function () {
 <p>Where I play with the level II ecoregion data</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGVzdDEgPC0gbWVyZ2UoZW50aXJlX3VzXzEsIGVudGlyZV91c18yKVxuXG5gYGAifQ== -->
-<pre class="r"><code>test1 &lt;- merge(entire_us_1, entire_us_2)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShtYXB0b29scylcblxuYGBgIn0= -->
+<pre class="r"><code>library(maptools)
 </code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZyBpbiAuSW50ZXJuYWwoZ2ModmVyYm9zZSwgcmVzZXQsIGZ1bGwpKSA6XG4gIGNsb3NpbmcgdW51c2VkIGNvbm5lY3Rpb24gMyAoL3Zhci9mb2xkZXJzL3JxLzMxZHRwMjMxMzhsNGhzOWtiMnF4NHBzNDAwMDBnbi9ULy9SdG1wUnE2Z2lhL3Jhc3Rlci8vL3JfdG1wXzIwMTgtMDctMjBfMTYxMTI2Xzk3ODI5XzM3Mjc2LmdyaSlcbiJ9 -->
-<pre><code>Warning in .Internal(gc(verbose, reset, full)) :
-  closing unused connection 3 (/var/folders/rq/31dtp23138l4hs9kb2qx4ps40000gn/T//RtmpRq6gia/raster///r_tmp_2018-07-20_161126_97829_37276.gri)</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBzcFxuQ2hlY2tpbmcgcmdlb3MgYXZhaWxhYmlsaXR5OiBUUlVFXG4ifQ== -->
+<pre><code>Loading required package: sp
+Checking rgeos availability: TRUE</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShtYXB0b29scylcbnJlcXVpcmUocmFzdGVyKVxuYGBgIn0= -->
+<pre class="r"><code>library(maptools)
+require(raster)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiByYXN0ZXJcbiJ9 -->
+<pre><code>Loading required package: raster</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShtYXB0b29scylcbnJlcXVpcmUocmFzdGVyKVxucmVxdWlyZShpZ3JhcGgpXG5gYGAifQ== -->
+<pre class="r"><code>library(maptools)
+require(raster)
+require(igraph)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBpZ3JhcGhcblxuQXR0YWNoaW5nIHBhY2thZ2U6IOKAmGlncmFwaOKAmVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdCBpcyBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnJhc3RlcuKAmTpcblxuICAgIHVuaW9uXG5cblRoZSBmb2xsb3dpbmcgb2JqZWN0cyBhcmUgbWFza2VkIGZyb20g4oCYcGFja2FnZTpzdGF0c+KAmTpcblxuICAgIGRlY29tcG9zZSwgc3BlY3RydW1cblxuVGhlIGZvbGxvd2luZyBvYmplY3QgaXMgbWFza2VkIGZyb20g4oCYcGFja2FnZTpiYXNl4oCZOlxuXG4gICAgdW5pb25cbiJ9 -->
+<pre><code>Loading required package: igraph
+
+Attaching package: ‘igraph’
+
+The following object is masked from ‘package:raster’:
+
+    union
+
+The following objects are masked from ‘package:stats’:
+
+    decompose, spectrum
+
+The following object is masked from ‘package:base’:
+
+    union</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZWNvX0lJPC1yZWFkU2hhcGVQb2x5KGZuID0gXCJ+L0RvY3VtZW50cy93b3JrL25hX2NlY19lY29fbDIvTkFfQ0VDX0Vjb19MZXZlbDIuc2hwXCIpXG5gYGAifQ== -->
+<pre class="r"><code>eco_II&lt;-readShapePoly(fn = &quot;~/Documents/work/na_cec_eco_l2/NA_CEC_Eco_Level2.shp&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoidXNlIHJnZGFsOjpyZWFkT0dSIG9yIHNmOjpzdF9yZWFkXG4ifQ== -->
+<pre><code>use rgdal::readOGR or sf::st_read</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>Testing Entire US raster file even though it’s in a .adf form</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGlueV9hZGYgPC0gcmdkYWw6OnJlYWRHREFMKGZuYW1lID0gXCJ+L0Rvd25sb2Fkcy9MQU5ERklSRS9ISV9EaXN0MjAxMS9HcmlkL2hpX2Rpc3QyMDExL1wiKSBcblxuYGBgIn0= -->
-<pre class="r"><code>tiny_adf &lt;- rgdal::readGDAL(fname = &quot;~/Downloads/LANDFIRE/HI_Dist2011/Grid/hi_dist2011/&quot;) 
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGVzdF9mbG9yaWRhX3RpZiA8LSByZ2RhbDo6cmVhZEdEQUwoZm5hbWUgPSBcIn4vRG93bmxvYWRzL0xBTkRGSVJFL2Nyb3BlZF9mbG9yaWRhLnRpZlwiKSB0ZXN0X2Zsb3JpZGFfdGlmIDwtIHJhc3Rlcih0ZXN0X2Zsb3JpZGFfdGlmKVxuXG5gYGAifQ== -->
+<pre class="r"><code>test_florida_tif &lt;- rgdal::readGDAL(fname = &quot;~/Downloads/LANDFIRE/croped_florida.tif&quot;) test_florida_tif &lt;- raster(test_florida_tif)
 </code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoifi9Eb3dubG9hZHMvTEFOREZJUkUvSElfRGlzdDIwMTEvR3JpZC9oaV9kaXN0MjAxMS8gaGFzIEdEQUwgZHJpdmVyIEFJRyBcbmFuZCBoYXMgMTI2MDIgcm93cyBhbmQgMjAzODUgY29sdW1uc1xuIn0= -->
-<pre><code>~/Downloads/LANDFIRE/HI_Dist2011/Grid/hi_dist2011/ has GDAL driver AIG 
-and has 12602 rows and 20385 columns</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3I6IHVuZXhwZWN0ZWQgc3ltYm9sIGluIFwidGVzdF9mbG9yaWRhX3RpZiA8LSByZ2RhbDo6cmVhZEdEQUwoZm5hbWUgPSBcIn4vRG93bmxvYWRzL0xBTkRGSVJFL2Nyb3BlZF9mbG9yaWRhLnRpZlwiKSB0ZXN0X2Zsb3JpZGFfdGlmXCJcbiJ9 -->
+<pre><code>Error: unexpected symbol in &quot;test_florida_tif &lt;- rgdal::readGDAL(fname = &quot;~/Downloads/LANDFIRE/croped_florida.tif&quot;) test_florida_tif&quot;</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Reading in a small raster file that should be in the extent of ecoregions. Tried to eye-ball getting it to be on boarder of both ecoregions. Might not be.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuU291dGhlcm5fY29hc3RhbF9wbGFpbnMgPC0gcmFzdGVyOjpzcFRyYW5zZm9ybShTb3V0aGVybl9jb2FzdGFsX3BsYWlucywgY3JzKGZsb3JpZGFfcGF0Y2gpKVxuXG5gYGAifQ== -->
+<pre class="r"><code>Southern_coastal_plains &lt;- raster::spTransform(Southern_coastal_plains, crs(florida_patch))
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3I6ICdzcFRyYW5zZm9ybScgaXMgbm90IGFuIGV4cG9ydGVkIG9iamVjdCBmcm9tICduYW1lc3BhY2U6cmFzdGVyJ1xuIn0= -->
+<pre><code>Error: 'spTransform' is not an exported object from 'namespace:raster'</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTGV2ZWwgSUkgZWNvcmVnaW9ucyIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKV2hlcmUgSSBwbGF5IHdpdGggdGhlIGxldmVsIElJIGVjb3JlZ2lvbiBkYXRhCgpgYGB7cn0KbGlicmFyeShtYXB0b29scykKcmVxdWlyZShyYXN0ZXIpCnJlcXVpcmUoaWdyYXBoKQoKZWNvX0lJPC1yZWFkU2hhcGVQb2x5KGZuID0gIn4vRG9jdW1lbnRzL3dvcmsvbmFfY2VjX2Vjb19sMi9OQV9DRUNfRWNvX0xldmVsMi5zaHAiKQoKcGxvdChlY29fSUkpClNvdXRoZXJuX2NvYXN0YWxfcGxhaW5zIDwtIGVjb19JSVtlY29fSUkkTkFfTDJOQU1FID09ICJNSVNTSVNTSVBQSSBBTExVVklBTCBBTkQgU09VVEhFQVNUIFVTQSBDT0FTVEFMIFBMQUlOUyIsIF0KU291dGhlcm5fY29hc3RhbF9wbGFpbnMkU2hhcGVfQXJlYQoKZmxpc3QgPC0gbGlzdC5maWxlcygifi9Eb3dubG9hZHMvTEFOREZJUkUvU291dGhlYXN0LyIpCgpmaWxlX3BhdGggPC0gcGFzdGUoIn4vRG93bmxvYWRzL0xBTkRGSVJFL1NvdXRoZWFzdC8iLGZsaXN0WzFdLCIvVVNfRElTVDIwMTNcXFVTX0RJU1QyMDEzLnRpZiIsIHNlcCA9IiIpCgpmaWxlX3BhdGhfMSA8LSBwYXN0ZSgifi9Eb3dubG9hZHMvTEFOREZJUkUvU291dGhlYXN0LyIsZmxpc3RbMl0sIi9VU19ESVNUMjAxM1xcVVNfRElTVDIwMTMudGlmIiwgc2VwID0iIikKZW50aXJlX3VzXzEgPC0gcmFzdGVyKGZpbGVfcGF0aCkKZW50aXJlX3VzXzIgPC0gcmFzdGVyKGZpbGVfcGF0aF8xKQoKY3N2IDwtIHJlYWQuY3N2KCIvVXNlcnMvdGVzcy9Eb3dubG9hZHMvTEFOREZJUkUvVVNfRElTVDIwMDAvQ1NWX0RhdGEvVVNfZGlzdHVyYjIwMDAuY3N2IikKCnBsb3QoZW50aXJlX3VzXzIpCnRlc3QxIDwtIG1lcmdlKGVudGlyZV91c18xLCBlbnRpcmVfdXNfMikKYGBgCgoKVGVzdGluZyBFbnRpcmUgVVMgcmFzdGVyIGZpbGUgZXZlbiB0aG91Z2ggaXQncyBpbiBhIC5hZGYgZm9ybQoKYGBge3J9CgpsaWJyYXJ5KHJnZGFsKQoKI2FsbF91cyA8LSByZ2RhbDo6cmVhZEdEQUwoZm5hbWUgPSAifi9Eb3dubG9hZHMvTEFOREZJUkUvVVNfRElTVDIwMDAvZ3JpZDEvdXNfZGlzdDIwMDAvIikgIyBUb28gYmlnIHRvIGxvYWQgbG9jYWxseQoKdGlueV9hZGYgPC0gcmdkYWw6OnJlYWRHREFMKGZuYW1lID0gIn4vRG93bmxvYWRzL0xBTkRGSVJFL0hJX0Rpc3QyMDExL0dyaWQvaGlfZGlzdDIwMTEvIikgCmNzdjwtcmVhZC5jc3YoIi9Vc2Vycy90ZXNzL0Rvd25sb2Fkcy9MQU5ERklSRS9VU19ESVNUMjAwMC9DU1ZfRGF0YS9VU19kaXN0dXJiMjAwMC5jc3YiKQp0aW55X2FkZiA8LSByYXN0ZXIodGlueV9hZGYpCkhJX3JhdGlvcyA8LSBnZXRfcmF0aW9fZGlzdCh0aW55X2FkZiwgZGF0ZT0iMjAxMSIsIGNzdiA9IGNzdikKCmBgYAo=</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTGV2ZWwgSUkgZWNvcmVnaW9ucyIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKV2hlcmUgSSBwbGF5IHdpdGggdGhlIGxldmVsIElJIGVjb3JlZ2lvbiBkYXRhCgpgYGB7cn0KbGlicmFyeShtYXB0b29scykKcmVxdWlyZShyYXN0ZXIpCnJlcXVpcmUoaWdyYXBoKQoKZWNvX0lJPC1yZWFkU2hhcGVQb2x5KGZuID0gIn4vRG9jdW1lbnRzL3dvcmsvbmFfY2VjX2Vjb19sMi9OQV9DRUNfRWNvX0xldmVsMi5zaHAiKQoKcGxvdChlY29fSUkpClNvdXRoZXJuX2NvYXN0YWxfcGxhaW5zIDwtIGVjb19JSVtlY29fSUkkTkFfTDJOQU1FID09ICJNSVNTSVNTSVBQSSBBTExVVklBTCBBTkQgU09VVEhFQVNUIFVTQSBDT0FTVEFMIFBMQUlOUyIsIF0KU291dGhlcm5fY29hc3RhbF9wbGFpbnMkU2hhcGVfQXJlYQoKI2ZsaXN0IDwtIGxpc3QuZmlsZXMoIn4vRG93bmxvYWRzL0xBTkRGSVJFL1NvdXRoZWFzdC8iKQoKI2ZpbGVfcGF0aCA8LSBwYXN0ZSgifi9Eb3dubG9hZHMvTEFOREZJUkUvU291dGhlYXN0LyIsZmxpc3RbMV0sIi9VU19ESVNUMjAxM1xcVVNfRElTVDIwMTMudGlmIiwgc2VwID0iIikKCiNmaWxlX3BhdGhfMSA8LSBwYXN0ZSgifi9Eb3dubG9hZHMvTEFOREZJUkUvU291dGhlYXN0LyIsZmxpc3RbMl0sIi9VU19ESVNUMjAxM1xcVVNfRElTVDIwMTMudGlmIiwgc2VwID0iIikKI2VudGlyZV91c18xIDwtIHJhc3RlcihmaWxlX3BhdGgpCiNlbnRpcmVfdXNfMiA8LSByYXN0ZXIoZmlsZV9wYXRoXzEpCgpjc3YgPC0gcmVhZC5jc3YoIi9Vc2Vycy90ZXNzL0Rvd25sb2Fkcy9MQU5ERklSRS9VU19ESVNUMjAwMC9DU1ZfRGF0YS9VU19kaXN0dXJiMjAwMC5jc3YiKQoKI3Bsb3QoZW50aXJlX3VzXzIpCiN0ZXN0MSA8LSBtZXJnZShlbnRpcmVfdXNfMSwgZW50aXJlX3VzXzIpCmBgYAoKClRlc3RpbmcgRW50aXJlIFVTIHJhc3RlciBmaWxlIGV2ZW4gdGhvdWdoIGl0J3MgaW4gYSAuYWRmIGZvcm0KCmBgYHtyfQoKbGlicmFyeShyZ2RhbCkKCiNhbGxfdXMgPC0gcmdkYWw6OnJlYWRHREFMKGZuYW1lID0gIn4vRG93bmxvYWRzL0xBTkRGSVJFL1VTX0RJU1QyMDAwL2dyaWQxL3VzX2Rpc3QyMDAwLyIpICMgVG9vIGJpZyB0byBsb2FkIGxvY2FsbHkKCnRpbnlfYWRmIDwtIHJnZGFsOjpyZWFkR0RBTChmbmFtZSA9ICJ+L0Rvd25sb2Fkcy9MQU5ERklSRS9ISV9EaXN0MjAxMS9HcmlkL2hpX2Rpc3QyMDExLyIpIAoKdGVzdF9mbG9yaWRhX3RpZiA8LSByZ2RhbDo6cmVhZEdEQUwoZm5hbWUgPSAifi9Eb3dubG9hZHMvTEFOREZJUkUvY3JvcGVkX2Zsb3JpZGEudGlmIikgCnRlc3RfZmxvcmlkYV90aWYgPC0gcmFzdGVyKHRlc3RfZmxvcmlkYV90aWYpCgpjc3Y8LXJlYWQuY3N2KCIvVXNlcnMvdGVzcy9Eb3dubG9hZHMvTEFOREZJUkUvVVNfRElTVDIwMDAvQ1NWX0RhdGEvVVNfZGlzdHVyYjIwMDAuY3N2IikKdGlueV9hZGYgPC0gcmFzdGVyKHRpbnlfYWRmKQojSElfcmF0aW9zIDwtIGdldF9yYXRpb19kaXN0KHRpbnlfYWRmLCBkYXRlPSIyMDExIiwgY3N2ID0gY3N2KQoKcGxvdCh0aW55X2FkZikKCiMjIyBDcm9wIGJ5IGFuIGVjb3JlZ2lvbgoKCgpzdGF0ZSA8LSBnZXREYXRhKCJHQURNIiwgY291bnRyeT0iVVNBIiwgbGV2ZWw9MSkKbXlzdGF0ZXMgPC0gYygiSGF3YWlpIikKSGF3YWlpIDwtIHN0YXRlW2FzLmNoYXJhY3RlcihzdGF0ZUBkYXRhJFNUQVRFX05BTUUpICVpbiUgbXlzdGF0ZXMsIF0KCiNjcnMoSGF3YWlpKSA8LSBjcnModGlueV9hZGYpCiBIYXdhaWkgPC0gcHJvamVjdFJhc3Rlcih0aW55X2FkZixIYXdhaWksIHJlcyh0aW55X2FkZiksIGNycyh0aW55X2FkZikpCiBIYXdhaWkgPC0gcmdkYWw6OnNwVFJhbnNmb3JtKEhhd2FpaSwgY3JzKHRpbnlfYWRmKSkKc3Vic2V0X2ggPC0gY3JvcCh0aW55X2FkZiwgZXh0ZW50KEhhd2FpaSkpCmBgYApSZWFkaW5nIGluIGEgc21hbGwgcmFzdGVyIGZpbGUgdGhhdCBzaG91bGQgYmUgaW4gdGhlIGV4dGVudCBvZiBlY29yZWdpb25zLiBUcmllZCB0byBleWUtYmFsbCBnZXR0aW5nIGl0IHRvIGJlIG9uIGJvYXJkZXIgb2YgYm90aCBlY29yZWdpb25zLiBNaWdodCBub3QgYmUuIAoKYGBge3J9CmZsb3JpZGFfcGF0Y2ggPC0gcmFzdGVyOjpyYXN0ZXIoIn4vRG93bmxvYWRzL0xBTkRGSVJFL0Zsb3JpZGFfYm90aF84M19hbmRfODVfVVNfRElTVDIwMTQvVVNfRElTVDIwMTRcXFVTX0RJU1QyMDE0LnRpZiIpCiNmbG9yaWRhX3BhdGNoIDwtIHJhc3RlcihmbG9yaWRhX3BhdGNoKQoKZWNvX0lJPC0gcmdkYWw6OnJlYWRPR1IoIn4vRG9jdW1lbnRzL3dvcmsvbmFfY2VjX2Vjb19sMi9OQV9DRUNfRWNvX0xldmVsMi5zaHAiKQoKClNvdXRoZXJuX2NvYXN0YWxfcGxhaW5zIDwtIGVjb19JSVtlY29fSUkkTkFfTDJOQU1FID09ICJNSVNTSVNTSVBQSSBBTExVVklBTCBBTkQgU09VVEhFQVNUIFVTQSBDT0FTVEFMIFBMQUlOUyIsIF0KI3Bsb3QoU291dGhlcm5fY29hc3RhbF9wbGFpbnMpCgpTb3V0aGVybl9jb2FzdGFsX3BsYWlucyA8LSByYXN0ZXI6OnNwVHJhbnNmb3JtKFNvdXRoZXJuX2NvYXN0YWxfcGxhaW5zLCBjcnMoZmxvcmlkYV9wYXRjaCkpCmNycyhTb3V0aGVybl9jb2FzdGFsX3BsYWlucykgPC0gY3JzKGZsb3JpZGFfcGF0Y2gpCgoKCmNyb3BlZCA8LSBjcm9wKGZsb3JpZGFfcGF0Y2gsIGV4dGVudChTb3V0aGVybl9jb2FzdGFsX3BsYWlucykpCm1hc2tlZCA8LSBtYXNrKGZsb3JpZGFfcGF0Y2gsIG1hc2sgPSBTb3V0aGVybl9jb2FzdGFsX3BsYWlucywgaW52ZXJzZT1UUlVFKQoKd3JpdGVSYXN0ZXIobWFza2VkLCAifi9Eb3dubG9hZHMvTEFOREZJUkUvY3JvcGVkX2Zsb3JpZGFfOF81LnRpZiIpCgoKCmBgYAo=</div>
 
 
 

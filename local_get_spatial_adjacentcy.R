@@ -6,6 +6,7 @@
 
 require(raster)
 require(igraph)
+require(fasterize)
 #equire(rgeos)
 #library(rgdal)
 #library(sp)

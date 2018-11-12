@@ -1,24 +1,46 @@
 # Note: this function interperates differences in cell 
 # values to be differences in age. This doesn't have to be the case. 
+# requires raster and rlang packages, corner_number and edge_number functions
 
+library(rlang)
+source("./edge_number.R")
+source("./corner_number.R")
 
-
-r <- raster(ncol=5, nrow=5)
-
-
-values(r) <- c(NA,NA,NA,NA,NA,
-               NA,5,2,1,NA,
-               NA,NA,3,NA,NA,
-               NA,1,NA,NA,NA,
-               NA,NA,NA,NA,NA)
 
 raster_to_age_matrix <- function(r) {
   
-  total_area <- nrow(r) * ncol(r)
+  ## Add a frame of NA's
+  index_r <- cbind( values(r), seq(1:ncell(r)))
+  r_ncol <- ncol(r)
+  r_nrow <- nrow(r)
+  n_ncell <- (ncol(r) + 2) * (nrow(r) + 2)
+  
+  n_vals <- rep(NA, n_ncell)
+  n_ncol <- ncol(r) + 2
+  mult_row <- 0
+  
+  for(i in 1:ncell(r)){
+    
+    new_index <- n_ncol + 1 + mult_row + index_r[i,2]
+    n_vals[new_index] <- index_r[i,1]
+    
+    if(((new_index + 1) %% n_ncol) == 0){
+      mult_row<- mult_row+2
+    }
+    
+  }
+  
+  r<- raster(nrows = r_nrow+2, ncol = r_ncol +2, vals = n_vals)
+  
+  ## Start Age matrix on new matrix
+  ncol <- ncol(r)
+  nrow <- nrow(r)
+  total_area <- nrow * ncol
   vals <- getValues(r)
   background <- total_area - length(na.omit(vals))
   age_classes <- unique(vals)
-  age_classes <- as.character(age_classes)
+  age_classes <- as.numeric(age_classes)
+  age_classes <- sort(age_classes,decreasing = TRUE, na.last = TRUE)
   
   ## Make empty age matrix
   age_matrix <- matrix(nrow = length(age_classes), ncol = length(age_classes))
@@ -26,11 +48,16 @@ raster_to_age_matrix <- function(r) {
   colnames(age_matrix) <- age_classes
   
   total_age_number <- freq(r)
+  values <- total_age_number[,1]
+  counts <- total_age_number[,2]
+  total_age_counts <- cbind(values, counts)
+  total_age_counts <- as.data.frame(total_age_counts)
+  colnames(total_age_counts) <- c("values", "counts")
   
   ## Make a list of cell numbers for every age class
   cell_numbers <- list()
   for(i in seq_along(age_classes)){
-    #tmp <- r
+    
     just_num <- vals
     if (!is.na(age_classes[i])){
       just_num[ just_num != age_classes[i]] <- NA
@@ -52,27 +79,58 @@ raster_to_age_matrix <- function(r) {
   for (j in  seq_along(age_classes)){
     cell_num_main <- as.numeric(cell_numbers[[j]][,1])
     age_main <- unique(cell_numbers[[j]][,2])
-    for(i in seq_along(layers) ){
+    
+    
+    for(i in seq_along(age_classes)){
 
       cell_num_small <- as.numeric(cell_numbers[[i]][,1])
-      age_small <- as.numeric(cell_numbers[[i]][,2])
+      age_small <- unique(as.numeric(cell_numbers[[i]][,2]))
       
       
-      adj_test <- adjacent(r, cells = cell_num_main,target = cell_num_small)
+      adj <- adjacent(r, cells = cell_num_main,target = cell_num_small) 
+      #adj <- as.matrix(adj)
+      #corner_indecies <- corner_number(nrow, ncol, give_indexes = TRUE)
+      #adj_corners <- unique(adj[adj %in% corner_indecies])
+      #adj_corners <- as.matrix(adj_corners)
+     
       
       if ( is.na(age_main)){
-        count <- total_age_number[,2][is.na(total_age_number[,1])]
+        count <- total_age_counts$counts[is.na(total_age_counts$values)]
         
       }else{
         
-        count <- total_age_number[,2][total_age_number[,1] == age_main]
+        count <- na.omit(total_age_counts[total_age_counts$values == age_main,]$counts)
+        count <- na.omit(count)
+        count <- as.numeric(count)
+    
       }
       
+      # Calculating how many times age_small is adj to age_large
+      # if (is_empty(adj)){
+      #   count_small <- 0
+      # 
+      # }else{
+      # 
+      # 
+      #   if (rlang::is_empty(adj_corners)) {
+      #     count_small <- length(adj[1])
+      #   }else{
+      #     if (length(adj[1]) > length(adj_corners[1,])) {
+      #       count_small <- length(adj[1]) - (2*length(adj_corners[1,])) #the number of corners times the number of "illegal" adj's
+      #     }
+      #     if (length(adj[1]) == length(adj_corners[1,])) {
+      #       count_small <- 0 # this may be wrong
+      #       print("The only adjacentcies were wrap-around adjacentcies. Setting to zero.")
+      #     }
+      #   }
+      # 
+      # 
+      # }
       
       if (is_empty(adj)){
         count_small <- 0
       }else {
-        if (length(adj <= 2)){
+        if (length(adj) <= 2){
           count_small <- length(adj[1])
         }else{
           count_small <- length(adj[,1])
@@ -80,11 +138,24 @@ raster_to_age_matrix <- function(r) {
         
       }
       
-      percent <- count_small / count
-      cat( percent, count_small, "count", count)
-    age_matrix[j,i] <- percent
       
+      ## get total possible adjacentcies (accounting for corners and boarders)
+      #edge <- edge_number(nrow, ncol, index_vector = cell_num_main)
+      #corner <- corner_number(nrow, ncol, index_vector = cell_num_main)
+      total_possible <- count*4 #- (edge + corner))*4) + (edge * 3) + (corner*2)
+    
+      
+      percent <-  count_small / total_possible
+      #cat( age_main,"adjacent to",age_small,"Percent",percent, count_small)
+      age_matrix[j,i] <- percent
+      
+      ## Special case of NA adj to NA, artifically assigning the remainder to NA/ NA adjacentcy
+      # because will always be wrong due to adjacentcy function
+      if(i == length(age_classes) & j == length(age_classes)){
+        age_matrix[j,i] <- (1 - sum(age_matrix[j,1:(i-1)]))
       }
+      
+      } # for loop 
 
   } # adjacentcy loop
   
