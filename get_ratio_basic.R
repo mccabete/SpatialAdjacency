@@ -4,12 +4,15 @@ source("./edge_to_interior.R")
 source("./get_interior_vertices.R")
 source("./get_outer_edges.R")
 
+if(FALSE){
+  ## used for testing, but dangerous to `source` as it may delete your data
 r <- raster(ncol=5, nrow=5)
 values(r) <- c(NA,0, 0,NA,NA,
                NA,2,3,2,NA,
                NA,2,2,2,NA,
                NA,0,NA,NA,NA,
                NA,NA,NA,NA,NA)
+}
 
 get_ratio_basic <- function ( r, date = NA) {
   
