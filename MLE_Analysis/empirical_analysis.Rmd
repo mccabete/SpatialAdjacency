@@ -1,5 +1,5 @@
 ---
-title: "Analyzing_Florida_whole_state"
+title: "Empirical Analyses"
 output:
   pdf_document: default
   html_document: default
@@ -570,12 +570,12 @@ dev.null <- 2*fl_8_3$value + 2*fl_8_5$value + 2*or_6_2$value + 2*or_7_1$value   
 
 ###### Disturbence down
     
-    ic=c(1, 0.95, 0.7029 ,0.0546)
-    ic = c(0,0,0,0)
-    ic <- c(100,1,100, 100)
-    if (names[i] == "Clearcut"){
-    ic=c(0.005, 0.95, 0.7029 ,0.0546)
-    }
+    # ic=c(1, 0.95, 0.7029 ,0.0546)
+    # ic = c(0,0,0,0)
+    # ic <- c(100,1,100, 100)
+    # if (names[i] == "Clearcut"){
+    # ic=c(0.005, 0.95, 0.7029 ,0.0546)
+    # }
     
      ic=c(4, 0.94, 0.7029 ,0.0546)
     conditional <- single_disturbence$sizw > 3
