@@ -18,15 +18,17 @@ library(ggridges)
 
 # read in data
 ```{r}
-florida_csv <- read.csv("~/Documents/work/Spacial_adj/Florida_whole_state2014dm2.csv", header = TRUE)
-florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Florida_8_3_2014dm2.csv", header = TRUE)
-florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Florida_8_5_2014dm2.csv", header = TRUE)
+
+florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_3_2014dm2.csv", header = TRUE)
+florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_5_2014dm2.csv", header = TRUE)
   
-oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Oregon_6_2_2014dm2.csv", header = TRUE)
-oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Oregon_7_1_2014dm2.csv", header = TRUE)
+oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_6_2_2014dm2.csv", header = TRUE)
+oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_7_1_2014dm2.csv", header = TRUE)
 ```
-# Helper functions
+
+# Upper + lower interior/ total ratio Helper functions
 ```{r, echo=FALSE}
+## Functions that find the most "circular" or "dense" interior / total ratio and the most linear for different numbers of pixels 
 
 upper_bound_ratios <- function(x){
   upper <- rep(NA, length(x))
@@ -119,26 +121,26 @@ lower_bound_ratios <- function(x){
   return (lower)
 }
 
-seq <- c(1:length(florida_csv$sizw))
-lower <- lower_bound_ratios(seq)
-upper <- upper_bound_ratios(seq)
 
 ```
 
-#Sifting out edge-case with artificial ratio inflation, and filling in missing names
+# Sifting out edge-case with artificial ratio inflation
+
+The base raster adjacentcy function that we used when calculating interiror/total ratios made a wrap-around adjacentcy assumption, inflating the adjacentcy of corner and edge pixels. We corrected for it by setting ratios above the maximum to NA. 
+
 ```{r}
-oregon_6_2$eco_II <- "6.2"
+oregon_6_2$eco_II <- "6.2"  ## Put in Ecoregion labels 
 oregon_7_1$eco_II <- "7.1"
 florida_8_3$eco_II <- "8.3"
 florida_8_5$eco_II <- "8.5"
 
-florida <- rbind(florida_8_3, florida_8_5)
+florida <- rbind(florida_8_3, florida_8_5) 
 oregon <- rbind(oregon_6_2, oregon_7_1)
 
-florida$size_ha <- florida$sizw * 0.09
+florida$size_ha <- florida$sizw * 0.09  ## Convert Pixels to ha
 oregon$size_ha <- oregon$sizw * 0.09
 
-florida$state <- "FL"
+florida$state <- "FL"  ## State Labels 
 oregon$state <- "OR"
 final <- rbind(florida, oregon)
 
@@ -152,210 +154,73 @@ final$ratio[(final$ratio > 0.5714286) & (final$sizw == 7)] <- NA
 final$ratio[(final$ratio >  0.7083333) & (final$sizw == 12)] <- NA
 final$ratio[(final$ratio >  0.7631579) & (final$sizw == 19)] <- NA
 
-## Add in dist names from 2014 lables -only strange unknown case
-
-disturbence_csv <- read.csv("~/Downloads/Disturbance1999-2014/disturb2014.csv", header = TRUE)
-
-
 ```
 
-Get ratio file for testing. Double check ani-joins. 
+
+## Subset Dataset for estimates of mixed disturbence types, and unknowns
 ```{r}
 
-unknowns <- final[grep("Unknown", final$dist_name) ,]  ## Note, this filetering discriminates against large disturbences, which tend to have large sections of known ID's but some small unknowns mixed in. Better to seperate out just "Unknown" and leave "Wildfire, unknown?"
+unknowns <- final[grep("Unknown", final$dist_name) ,]   
 no_unknowns <- dplyr::anti_join(final, unknowns, by = "dist_name") 
-
 mixed_disturbence <- final[grep(",", final$dist_name), ]
 single_disturbence <- dplyr::anti_join(final, mixed_disturbence, by = "dist_name")
 
-length(mixed_disturbence$dist_name)/ length(final$dist_name)
-
-#mixed_with_just_unknows <- dplyr::anti_join(mixed_disturbence, no_unknowns, by = "dist_name")
+single_disturbence <- na.omit(single_disturbence)
 
 no_unknowns_mixed_disturbence <- dplyr::anti_join(mixed_disturbence, unknowns, by = "dist_name") 
 no_unknowns_single_disturbence <- dplyr::anti_join(single_disturbence, unknowns, by = "dist_name")
 unknown_only <- dplyr::anti_join(unknowns, mixed_disturbence, by = "dist_name")
 
+
 disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") # These are the disturbences that are common between 4 ecoregions
 
+## Set up common color schemes 
 disturbence_colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6')
-
 eco_region_colors <- c('#df65b0', '#67001f', '#081d58','#7fcdbb') # Oregon then Florida implied
-
 state_colors <- c('#980043', "#225ea8")
 ```
 
 
 
-Estimate qa/qc stats
+## Estimate qa/qc stats for supplemental table 1
 ```{r}
 ## overall size ratios
 library(lemon)
 library(knitr)
 
-## Estimate unknown disturbence
-table <- list()
-table$percent_unknown_disturbence_event <- dim(unknowns)[1]/dim(final)[1]
-table$percent_unknown_single_area <- sum(unknown_only$size_ha)/ sum(final$size_ha)
-table$percent_unknown_single_event <-  dim(unknown_only)[1]/dim(final)[1]
-table$pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
-table$percent_unknown_area <- sum(unknowns$size_ha) / sum(final$size_ha)
-table$pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
-table$percent_mixed_no_unknows <- sum(no_unknowns_mixed_disturbence$size_ha)/ sum(final$size_ha)
-print(table)
-table$percent_mixed_no_unknowns_event <- dim(no_unknowns_mixed_disturbence)[1]/dim(final)[1]
+## Estimate unknown disturbence in an object 
+# table <- list()
+# table$percent_unknown_disturbence_event <- dim(unknowns)[1]/dim(final)[1]
+# table$percent_unknown_single_area <- sum(unknown_only$size_ha)/ sum(final$size_ha)
+# table$percent_unknown_single_event <-  dim(unknown_only)[1]/dim(final)[1]
+# table$pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+# table$percent_unknown_area <- sum(unknowns$size_ha) / sum(final$size_ha)
+# table$pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
+# table$percent_mixed_no_unknows <- sum(no_unknowns_mixed_disturbence$size_ha)/ sum(final$size_ha)
+# print(table)
+# table$percent_mixed_no_unknowns_event <- dim(no_unknowns_mixed_disturbence)[1]/dim(final)[1]
 
 
 for(i in seq_along(disturbences_names)){
-  subset <- single_disturbence
+  subset <- single_disturbence[single_disturbence$dist_name == disturbences_names[i], ]
   percent_event <- dim(subset)[1] / dim(final)[1]
-  percent_area <- sum(subset$size_ha)/ sum(final$size_ha)
+  percent_area <- sum(na.omit(subset$size_ha))/ sum(na.omit(final$size_ha))
   
   print(paste(disturbences_names[i], ":", "Pecent event:", percent_event, "Percent area:", percent_area ))
   
 }
 
 
+
 ```
 
 
 
-
+## Density Figures
 ```{r}
-# Density plot for data overall. Lets us see data rich vs data poor areas. 
-
-
 library(dplyr)
 library(ggplot2)
 
-
-# seq <- c(1:length(oregon$sizw))
-# seq[length(seq)] <- max(oregon$sizw)
-# lower <- lower_bound_ratios(seq)
-# upper <- upper_bound_ratios(seq)
-# 
-# ggplot(oregon, aes(sizw, ratio), show.legend = TRUE) +
-#   geom_hex() + 
-#   scale_fill_gradient(trans = "log")+
-#   geom_line(aes(x =seq , y = upper), color = "black")+
-#   geom_line(aes(x =seq , y = lower), color = "black")+
-#   geom_density_2d(color = "dark green") + 
-#   scale_x_continuous(trans="log") 
-# 
-# seq <- c(1:length(final[final$state == "FL",]$sizw))
-# seq[length(seq)] <- max(florida$sizw)
-# lower <- lower_bound_ratios(seq)
-# upper <- upper_bound_ratios(seq)
-# 
-# #ggplot(florida, aes(size_ha, ratio), show.legend = TRUE) +
-# #  geom_hex() + 
-# #  geom_line(aes(x =seq * 0.003 , y = (upper )), color = "black")+
-# #  geom_line(aes(x =seq * 0.003 , y = (lower )), color = "black")+
-# #   geom_density_2d(color = "dark green")+ 
-# #  scale_x_continuous(trans="log") +
-# #  scale_fill_gradient(trans = "log")
-# 
-# final %>% 
-#   filter(state == "FL") %>%
-# ggplot( aes(size_ha, ratio), show.legend = TRUE) +
-#   geom_hex() + 
-#   geom_line(aes(x =seq * 0.09 , y = (upper )), color = "black")+
-#   geom_line(aes(x =seq * 0.09 , y = (lower )), color = "black")+
-#    geom_density_2d(color = "dark green")+ 
-#   scale_x_continuous(trans="log") +
-#   scale_fill_gradient(trans = "log") + 
-#   xlab("Area ha") +
-#   ylab("Edge to Interior Ratio")+ 
-#   ggtitle("Florida")+
-#   theme(panel.background = element_blank())
-# 
-# 
-# seq <- c(1:length(final[final$state == "OR",]$sizw))
-# seq[length(seq)] <- max(oregon$sizw)
-# lower <- lower_bound_ratios(seq)
-# upper <- upper_bound_ratios(seq)
-# 
-# final %>% 
-#   filter(state == "OR") %>%
-# ggplot( aes(size_ha, ratio), show.legend = TRUE) +
-#   geom_hex() + 
-#   geom_line(aes(x =seq * 0.003 , y = (upper )), color = "black")+
-#   geom_line(aes(x =seq * 0.003 , y = (lower )), color = "black")+
-#    geom_density_2d(color = "dark green")+ 
-#   scale_x_continuous(trans="log") +
-#   scale_fill_gradient(trans = "log") + 
-#   xlab("Area ha") +
-#   ylab("Edge to Interior Ratio")+ 
-#   ggtitle("Oregon")+
-#   theme(panel.background = element_blank())
-# 
-# 
-# final %>% 
-#   filter(state == "OR") %>%
-# ggplot( aes(sizw, ratio), show.legend = TRUE) +
-#   geom_hex() + 
-#   geom_line(aes(x =seq  , y = (upper )), color = "black")+
-#   geom_line(aes(x =seq  , y = (lower )), color = "black")+
-#    geom_density_2d(color = "dark green")+ 
-#   #scale_x_continuous(trans="log") +
-#   scale_fill_gradient(trans = "log") + 
-#   xlab("Area ha") +
-#   ylab("Edge to Interior Ratio")+ 
-#   xlim(0,20)
-#   ggtitle("Oregon")+
-#   theme(panel.background = element_blank())
-# 
-
-
-# ggplot(unknown_only, aes(x = size_ha)) +
-#   geom_density( fill = "light blue") +
-#   xlab("Area ha") +
-# scale_x_continuous(trans="log")
-#  
-# ggplot(unknown_only, aes(x = size_ha)) +
-#   geom_density(data = other_mechanical, aes(x = size_ha), fill = "green", alpha = 0.5, position = "stack", show.legend = TRUE)+
-#   geom_density(data = thining_only, aes(x = size_ha), fill = "grey", alpha = 0.5, position = "stack")+
-#   geom_density(data = unknown_only, fill = "light blue", alpha = 0.5, position = "stack") +
-#   geom_density(data = Prescribed ,aes(x = size_ha), fill = "brown", alpha = 0.5, position = "stack")+
-#   geom_density(data = wildfire ,aes(x = size_ha), fill = "orange", alpha = 0.5, position = "stack")+
-#   geom_density(data = wildland, aes(x = size_ha), fill = "yellow", alpha = 0.5, position = "stack")+
-#   scale_fill_manual(name  ="Disturbence type", labels=c("Thinning", "Unknown", "Prescribed", "Wildfire", "Wildland"))+
-# scale_x_continuous(trans="log") +
-#   theme(legend.position="right")+ 
-# xlab("Area ha") 
-
-# ggplot(single_disturbence,aes(x = size_ha)) +
-#   geom_density(data = single_disturbence[conditional_fl_8_3,], aes(x = size_ha, group = dist_name), fill = "green", alpha = 0.25, position = "stack", show.legend = TRUE)+
-#   geom_density(data = single_disturbence[conditional_fl_8_5,], aes(x = size_ha), fill = "light blue", alpha = 0.25, position = "stack")+
-#   geom_density(data =single_disturbence[conditional_or_6_2,], aes(x = size_ha), fill = "orange", alpha = 0.25, position = "stack")+
-#   geom_density(data =single_disturbence[conditional_or_7_1,], aes(x = size_ha), fill = "yellow", alpha = 0.25, position = "stack")+
-# scale_x_continuous(trans="log") +
-#   theme(legend.position="right")+ 
-# xlab("Area ha") 
-
-# ### Density plot by ecoregion 
-# ggplot(single_disturbence,aes(x = size_ha)) +
-#   geom_ri( aes(x = size_ha, group = eco_II, fill = eco_II),position = "stack" , show.legend = TRUE)+
-# scale_x_continuous(trans="log") +
-#   theme(legend.position="right")+ 
-#   #scale_fill_manual()+ 
-# xlab("Area ha") 
-# 
-# ### By Disturbence type
-# single_disturbence %>%
-#   filter(single_disturbence$dist_name == disturbences_names) %>%
-# ggplot(aes(x = size_ha)) +
-#   geom_density( aes(x = size_ha, group = dist_name, fill= dist_name,), position = "stack", show.legend = TRUE)+
-# scale_x_continuous(trans="log") +
-#   theme(legend.position="right")+ 
-#   #scale_fill_manual()+ 
-# xlab("Area ha") 
-
-
-# scale_colour_discrete(name  ="Disturbence type",
-#                             breaks=unique(single_disturbence$dist_name),
-#                             labels=unique(single_disturbence$dist_name))+ 
-#   
 ## Ecoregion in ggridges
   na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
 ggplot( aes(x = size_ha, y = eco_II, fill = eco_II)) + scale_x_continuous(trans="log")+ geom_density_ridges() +
@@ -375,7 +240,7 @@ scale_x_log10(
     #ggtitle("Ecoregion")+
   scale_fill_manual(values= eco_region_colors)  
   
-### Disturbences
+### Disturbence Density Plots 
 na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
 ggplot( aes(x = size_ha, y = dist_name, fill = dist_name)) + scale_x_continuous(trans="log", limits = 0.09)+ geom_density_ridges() +
   geom_vline(xintercept = 0.09)+
@@ -393,16 +258,15 @@ scale_x_log10(
   xlab("Disturbance Event Size ha") + 
   #ggtitle("Size Distributions")+
   scale_fill_manual(values= disturbence_colors)  
-
-# na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
-# ggplot( aes(x = size_ha, y = dist_name)) + scale_x_continuous(trans="log")+geom_density_ridges() + geom_vline(xintercept = 0.09) + geom_vline(xintercept =  7)
-
 ```
 
-#Different disturbence types
 
-```{r, echo= TRUE}
 
+## KS tests for Supplemental Table 2
+
+```{r, echo=TRUE}
+
+### Making Disturbence-level objects
 fire_only <- single_disturbence[grep("ire", single_disturbence$dist_name),]
 wildland <- fire_only[grep("Wildland", fire_only$dist_name),]
 wildfire <- fire_only[grep("Wildfire", fire_only$dist_name),]
@@ -417,58 +281,6 @@ mastication <- single_disturbence[single_disturbence$dist_name == "Mastication",
 herbicide <- single_disturbence[single_disturbence$dist_name == "Herbicide",]
 unknown_only <- unknown_only
 
-## Removeing single, double , and triple pixels
-# fire_only <- fire_only[fire_only$sizw != 1 & fire_only$sizw !=2 & fire_only$sizw !=3,]
-# clearcut_only <- clearcut_only[clearcut_only$sizw != 1 & clearcut_only$sizw !=2 & clearcut_only$sizw !=3,]
-# wildland <- wildland[wildland$sizw != 1 & wildland$sizw !=2 & wildland$sizw !=3,]
-# prescibed <- Prescribed[Prescribed$sizw != 1 & Prescribed$sizw !=2 & Prescribed$sizw !=3,]
-# wildfire <- wildfire[wildfire$sizw != 1 & wildfire$sizw !=2 & wildfire$sizw !=3,]
-# thining_only <- thining_only[thining_only$sizw != 1 & thining_only$sizw !=2 & thining_only$sizw !=3,]
-# other_mechanical <- other_mechanical[other_mechanical$sizw != 1 & other_mechanical$sizw !=2 & other_mechanical$sizw !=3,]
-# unknown_only <- unknown_only[unknown_only$sizw != 1 & unknown_only$sizw !=2 & unknown_only$sizw != 3,]
-# mastication <- mastication[mastication$sizw >3, ]
-# herbicide <- herbicide[herbicide$sizw >3,]
-#no_unknowns_single_disturbence[no_unknowns_single_disturbence$sizw]
-
-#dists <- list(clearcut_only, wildland, wildfire, prescibed, thining_only, other_mechanical, unknown_only)
-```
-
-# KS tests and Density plots
-
-```{r, echo=TRUE}
-#ggplot(final, aes(x = size_ha)) +
-#  geom_density( fill = "light blue") +
-#  xlab("Area ha") +
-#scale_x_continuous(trans="log")
-
-# final %>%
-#   filter(final$state == "OR") %>%
-# ggplot( aes(x = ratio)) +
-#   geom_density( fill = "light blue") +
-#   xlab("Area ha") +
-# scale_x_continuous(trans="log")
-# final %>%
-#   filter(final$state == "FL") %>%
-# ggplot( aes(x = size_ha)) +
-#   geom_density( fill = "light blue", alpha = 0.5) +
-#   xlab("Area ha") +
-# scale_x_continuous(trans="log")
-
-# ggplot(fire_only, aes(x = size_ha)) +
-#   geom_density( fill = "light blue") +
-#   geom_density(data= wildland, aes(x = size_ha),fill = "dark blue", position = "stack") +
-#   geom_density(data = wildfire, aes(x = size_ha), fill = "blue", position = "stack")+ 
-#   xlab("Area ha") +
-# scale_x_continuous(trans="log") 
-# 
-# ggplot(fire_only, aes(x = size_ha)) +
-#   geom_density( fill = "light blue") +
-#   geom_density(data= wildland, aes(x = size_ha),fill = "dark blue", position = "stack") +
-#   geom_density(data = wildfire, aes(x = size_ha), fill = "blue", position = "stack")+ 
-#   xlab("Area ha") +
-# scale_x_continuous(trans="log") 
-  
-
 
 options(digits = 3)
 dist_size<-list(clearcut_only$sizw, wildland$sizw, wildfire$sizw, prescribed$sizw, thining_only$sizw, other_mechanical$sizw, unknown_only$sizw, mastication$sizw, herbicide$sizw)
@@ -476,8 +288,6 @@ names(dist_size) <- c("Clearcut", "Wildland Fire", "Wildfire", "Prescribed", "Th
 
 size_dist_resulsts <- list()
 
-#size_dist_resulsts$p_val <- rep(NA, length(dist_size)^2)
-#size_dist_resulsts$D_val <-  rep(NA, length(dist_size)^2)
 iterator <- 0
 for ( i in 1:length(names(dist_size))){
   for (j in 1:length(names(dist_size))){
@@ -495,12 +305,10 @@ KS_results$combination  <- rep(NA, length(names(dist_size))^2)
 KS_results$pval <- rep(NA, length(names(dist_size))^2)
 KS_results$sig <- rep(NA, length(names(dist_size))^2)
 KS_results$D <- rep(NA, length(names(dist_size))^2)
-#KS_results$order <- rep(NA, length(names(dist_size))^2)
  KS_results <- as.data.frame(KS_results)
 
 for (i in 1:(length(names(dist_size))^2)){
-  
-  #KS_results$order[i] <- i
+
   KS_results$pval[i] <- size_dist_resulsts[[i]]$p.value
   KS_results$combination[i] <- paste(size_dist_resulsts[[i]]$names)
   KS_results$sig[i] <- FALSE
@@ -534,23 +342,12 @@ KS_results$pval[length(names(dist_size))^2 +3] <- or_6_2_7_1$p.value
 KS_results$sig[length(names(dist_size))^2 +3] <-  or_6_2_7_1$p.value < 0.000104
 KS_results$D[length(names(dist_size))^2 +3] <- or_6_2_7_1$statistic
 
-#ks.test(dist_size[,2], dist_size[,3], alternative = "two.sided")
+
 KS_results <- as.data.frame(KS_results)
 KS_results <- KS_results[KS_results$pval != 1, ]
-#KS_results$pval[KS_results$pval <  0.0001 ] <- " < 0.0001 "
 
-reciprical_name <- function(x){
-  first_name <- grep(" x ")
-}
-
-KS_results_no_redundant <- KS_results[1:21, ]
-
-
-
-### Make pretty table with results CAUSING PROBLEMS WITH KNITTING
+### Make table with results 
 options(knitr.table.format = "html")
-
-
 
 KS_results[,c(1:2, 4)] %>%
  # select(combination, pval, D) %>%
@@ -559,16 +356,22 @@ KS_results[,c(1:2, 4)] %>%
   #select(KS_results$sig == TRUE) %>%
   row_spec(which(KS_results$sig), bold = T, background = "#ADD8E6")# %>%
   
-write.csv2(KS_results, row.names = FALSE, file = "/Users/tess/Documents/work/KS_results_table_final")
+write.csv2(KS_results, row.names = FALSE, file = "")
 
 
 ```
 
 
 
-## Curve fitting
+# MLE Curve fitting
+
+The Modifide Michaelis Menten curve was chosen based on it's ability to match the null-model data. Other MLE cuvrves considered are in the Draft of Liklyhood file. Curves were compared excluding single, double, and triple pixels. 
+
+
+
 ```{r, echo = FALSE}
 
+## Function defining the modifide Michaelis Menten curve
 ic=c(4,1,1,1)
 MMLnLpower  <- function(beta, ratio, sizw){  ## define likelihood
   LL = -sum(dnorm(ratio,(beta[2]*(sizw^beta[3]))/(beta[1]+(sizw^beta[3])),beta[4], log = TRUE))
@@ -576,27 +379,39 @@ MMLnLpower  <- function(beta, ratio, sizw){  ## define likelihood
   if(!is.finite(LL)) return(1000)
   return(LL)
 }
+```
 
-null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names
+*State-level hierarchy*
+
+```{r}
+
+## Null
+null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
 ic=c(1.416, 0.984, 0.444, 0.101)
-all_param <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[null_model_conditional,]$ratio), sizw = na.omit(single_disturbence[null_model_conditional,]$sizw))
+all_param <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[null_model_conditional,]$ratio, sizw = single_disturbence[null_model_conditional,]$sizw) 
 
+## Oregon and Florida
 oregon_model_conditional <- null_model_conditional &  single_disturbence$state =="OR"
 ic=c(1.416, 0.984, 0.444, 0.101)
-oregon_param <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[ oregon_model_conditional,]$ratio), sizw = na.omit(single_disturbence[oregon_model_conditional,]$sizw))
+oregon_param <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[ oregon_model_conditional,]$ratio, sizw = single_disturbence[oregon_model_conditional,]$sizw)
 
 ic=c(0.0005,0.5,1,1)
 florida_model_conditional <- null_model_conditional &  single_disturbence$state =="FL"
-florida_param <- optim(ic,MMLnLpower,method="L-BFGS-B",ratio = na.omit(single_disturbence[florida_model_conditional,]$ratio), sizw = na.omit(single_disturbence[florida_model_conditional,]$sizw))
+florida_param <- optim(ic,MMLnLpower,method="L-BFGS-B",ratio = single_disturbence[florida_model_conditional,]$ratio, sizw = single_disturbence[florida_model_conditional,]$sizw)
 
+## Compare? 
 dev.null <- 2*all_param$value         ## null model
 dev.tmt  <- 2*oregon_param$value + 2*florida_param$value      
 LR       <- dev.null - dev.tmt        ## Likelihood ratio
 pval     <- 1 - pchisq(LR,4)
-pval
+pval # Significant 
 
-## ## Eco region
-ic=c(1.416, 0.984, 0.444, 0.101)
+ check_if_valid_subset <- length(single_disturbence[florida_model_conditional,]$ratio) + length(single_disturbence[oregon_model_conditional,]$ratio) == length(single_disturbence[null_model_conditional,]$ratio)
+
+ print(paste("Valid subset?", check_if_valid_subset))
+
+## Eco region within state
+
 conditional_fl_8_3  <- null_model_conditional & single_disturbence$state =="FL" & single_disturbence$eco_II == "8.3" 
 conditional_fl_8_5 <- null_model_conditional &  single_disturbence$state =="FL" & single_disturbence$eco_II == "8.5" 
 
@@ -604,36 +419,33 @@ conditional_or_6_2 <- null_model_conditional &  single_disturbence$state =="OR" 
 conditional_or_7_1 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "7.1" 
 
 ic=c(0.0005,0.5,1,1)
-fl_8_3 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[conditional_fl_8_3 ,]$ratio), sizw = na.omit(single_disturbence[conditional_fl_8_3,]$sizw))
+fl_8_3 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_fl_8_3 ,]$ratio, sizw = single_disturbence[conditional_fl_8_3,]$sizw)
 
-fl_8_5 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[conditional_fl_8_5 ,]$ratio), sizw = na.omit(single_disturbence[conditional_fl_8_5,]$sizw))
+fl_8_5 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_fl_8_5 ,]$ratio, sizw = single_disturbence[conditional_fl_8_5,]$sizw)
 
-or_6_2 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[conditional_or_6_2 ,]$ratio), sizw = na.omit(single_disturbence[conditional_or_6_2,]$sizw))
+or_6_2 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_or_6_2 ,]$ratio, sizw = single_disturbence[conditional_or_6_2,]$sizw)
 
-or_7_1 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[conditional_or_7_1 ,]$ratio), sizw = na.omit(single_disturbence[conditional_or_7_1,]$sizw))
+or_7_1 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_or_7_1 ,]$ratio, sizw = single_disturbence[conditional_or_7_1,]$sizw)
    
-   ## Florida comparison
-    dev.null <- 2*florida_param$value       ## null model
-    dev.tmt  <- 2*fl_8_3$value + 2*fl_8_5$value      ## model with elevated vs ambient CO2 treatment
+   ## Comparison
+    dev.null <- 2*florida_param$value  + 2*oregon_param$value     ## null model
+    dev.tmt  <- 2*fl_8_3$value + 2*fl_8_5$value + 2*or_6_2$value + 2*or_7_1$value  # 8 params in the null, 16 * 4
     LR       <- dev.null - dev.tmt        ## Likelihood ratio
-    pval     <- 1 - pchisq(LR,4)
-    pval
+    pval     <- 1 - pchisq(LR,8)
+    pval # Significant
     
-   ## Oregon comparision 
-    
-    dev.null <- 2*oregon_param$value       ## null model
-    dev.tmt  <- 2*or_6_2$value + 2*or_7_1$value      ## model with elevated vs ambient CO2 treatment
-    LR       <- dev.null - dev.tmt        ## Likelihood ratio
-    pval     <- 1 - pchisq(LR,4)
-     pval
-    
-#upper=c(1000,1, 1000,1000),lower=c(0,0, 0, 0)
+ fl_subset <- length(single_disturbence[florida_model_conditional,]$ratio) == (length(single_disturbence[conditional_fl_8_3 ,]$ratio) + length(single_disturbence[conditional_fl_8_5 ,]$ratio))
+ 
+ or_subset <- length(single_disturbence[oregon_model_conditional,]$ratio) == (length(single_disturbence[conditional_or_6_2 ,]$ratio) + length(single_disturbence[conditional_or_7_1 ,]$ratio))
+ 
+ print(paste("Valid subset?", (fl_subset & or_subset)))
      
-### All disturbence classes
+## disturbence classes within ecoregion within state
 ic=c(2.5,1,1,1)
+
 run_optim <- function (conditional, disturbences_names){
   conditional <- conditional & single_disturbence$dist_name == disturbences_names
-  PR <-  optim(ic,MMLnLpower,method="L-BFGS-B", ratio = na.omit(single_disturbence[conditional,]$ratio), sizw = na.omit(single_disturbence[conditional,]$sizw))
+  PR <-  optim(ic,MMLnLpower,method="SANN", ratio = single_disturbence[conditional,]$ratio, sizw = na.omit(single_disturbence[conditional,]$sizw))
   return(PR)
 }
 
@@ -641,21 +453,121 @@ names <- disturbences_names
 mle_output <- list()
 
 ## FL 8.3
+length_dists <- 0
+failed <- ""
 for (i in seq_along(names)){
   mle_output$florida_8_3[[i]] <- run_optim(conditional_fl_8_3, names[i])
   if (mle_output$florida_8_3[[i]]$convergence > 0){
     print(paste(names[i], "-------------------------------failed to converge--------------------------------------------------"))
+    failed <- c(failed, paste(names[i]))
   }
   
+  length_dists <- length_dists + length(single_disturbence[conditional_fl_8_3 & single_disturbence$dist_name ==  names[i], ]$ratio)
+  
+  if(i == length(names)){
+    if(length_dists == length(single_disturbence[conditional_fl_8_3,]$ratio)){
+      print(paste("Valid subset"))
+    }else{
+      
+      paste("ERROR: INVALID subset, disturbences length :",length_dists, " 8.3 length", length(single_disturbence[conditional_fl_8_3,]$ratio))
+    }
+  }
 }
-dev.null <- 2*fl_8_3$value + 2*fl_8_5$value       ##null model, 8 params
-    dev.tmt  <- 2*mle_output$florida_8_3[[1]]$value + 2*mle_output$florida_8_3[[2]]$value + 2*mle_output$florida_8_3[[3]]$value + 2*mle_output$florida_8_3[[4]]$value + 2*mle_output$florida_8_3[[5]]$value + mle_output$florida_8_3[[6]]$value + mle_output$florida_8_3[[7]]$value     ## model with 7 * 4 or 28 parameters, so 
-    LR       <- dev.null - dev.tmt        ## Likelihood ratio
-    pval     <- 1 - pchisq(LR,20)  ## extreamly large pvalue
-    pval    
+failed
 
+## Fl 8.5
+length_dists <- 0
+failed <- ""
+for (i in seq_along(names)){
+  mle_output$florida_8_5[[i]] <- run_optim(conditional_fl_8_5, names[i])
+  if (mle_output$florida_8_5[[i]]$convergence > 0){
+    print(paste(names[i], "-------------------------------failed to converge--------------------------------------------------"))
+    failed <- c(failed, paste(names[i]))
+  }
+  
+  length_dists <- length_dists + length(single_disturbence[conditional_fl_8_5 & single_disturbence$dist_name ==  names[i], ]$ratio)
+  
+  if(i == length(names)){
+    if(length_dists == length(single_disturbence[conditional_fl_8_5,]$ratio)){
+      print(paste("Valid subset"))
+    }else{
+      
+      paste("ERROR: INVALID subset, disturbences length :",length_dists, " 8.3 length", length(single_disturbence[conditional_fl_8_5,]$ratio))
+    }
+  }
+}
+failed
+
+## OR 6.2
+length_dists <- 0
+failed <- ""
+for (i in seq_along(names)){
+  mle_output$oregon_6_2[[i]] <- run_optim(conditional_or_6_2, names[i])
+  if (mle_output$oregon_6_2[[i]]$convergence > 0){
+    print(paste(names[i], "-------------------------------failed to converge--------------------------------------------------"))
+    failed <- c(failed, paste(names[i]))
+  }
+  
+  length_dists <- length_dists + length(single_disturbence[conditional_or_6_2 & single_disturbence$dist_name ==  names[i], ]$ratio)
+  
+  if(i == length(names)){
+    if(length_dists == length(single_disturbence[conditional_or_6_2,]$ratio)){
+      print(paste("Valid subset"))
+    }else{
+      
+      paste("ERROR: INVALID subset, disturbences length :",length_dists, "ecoregion length", length(single_disturbence[conditional_or_6_2,]$ratio))
+      
+    }
+  }
+}
+failed
+
+## OR 7.1
+length_dists <- 0
+failed <- ""
+for (i in seq_along(names)){
+  mle_output$oregon_7_1[[i]] <- run_optim(conditional_or_7_1, names[i])
+  if (mle_output$oregon_7_1[[i]]$convergence > 0){
+    print(paste(names[i], "-------------------------------failed to converge--------------------------------------------------"))
     
+    failed <- c(failed, paste(names[i]))
+  }
+  
+  length_dists <- length_dists + length(single_disturbence[conditional_or_7_1 & single_disturbence$dist_name ==  names[i], ]$ratio)
+  
+  if(i == length(names)){
+    if(length_dists == length(single_disturbence[conditional_or_7_1,]$ratio)){
+      print(paste("Valid subset"))
+    }else{
+      
+      paste("ERROR: INVALID subset, disturbences length :",length_dists, "ecoregion length", length(single_disturbence[conditional_or_7_1,]$ratio))
+    }
+  }
+}
+
+failed
+
+   # Comparison
+dev.null <- 2*fl_8_3$value + 2*fl_8_5$value + 2*or_6_2$value + 2*or_7_1$value        ##null model, 16 params
+    dev.tmt  <- 2*mle_output$florida_8_5[[1]]$value + 2*mle_output$florida_8_5[[2]]$value + 2*mle_output$florida_8_5[[3]]$value + 2*mle_output$florida_8_5[[4]]$value + 2*mle_output$florida_8_5[[5]]$value + 2*mle_output$florida_8_5[[6]]$value + 2*mle_output$florida_8_5[[7]]$value + 2*mle_output$florida_8_5[[8]]$value + 2*mle_output$florida_8_5[[9]]$value  
+
++ 2*mle_output$florida_8_3[[1]]$value +
+2*mle_output$florida_8_3[[2]]$value + 2*mle_output$florida_8_3[[3]]$value + 2*mle_output$florida_8_3[[4]]$value + 2*mle_output$florida_8_3[[5]]$value + 2*mle_output$florida_8_3[[6]]$value + 2*mle_output$florida_8_3[[7]]$value + 2*mle_output$florida_8_3[[8]]$value + 2*mle_output$florida_8_3[[9]]$value +
+
++ 2*mle_output$oregon_6_2[[1]]$value + 
+2*mle_output$oregon_6_2[[2]]$value + 2*mle_output$oregon_6_2[[3]]$value + 2*mle_output$oregon_6_2[[4]]$value + 2*mle_output$oregon_6_2[[5]]$value + 2*mle_output$oregon_6_2[[6]]$value + 2*mle_output$oregon_6_2[[7]]$value + 2*mle_output$oregon_6_2[[8]]$value + 2*mle_output$oregon_6_2[[9]]$value +
+
++ 2*mle_output$oregon_7_1[[1]]$value +
+2*mle_output$oregon_7_1[[2]]$value + 2*mle_output$oregon_7_1[[3]]$value + 2*mle_output$oregon_7_1[[4]]$value + 2*mle_output$oregon_7_1[[5]]$value + 2*mle_output$oregon_7_1[[6]]$value + 2*mle_output$oregon_7_1[[7]]$value + 2*mle_output$oregon_7_1[[8]]$value + 2*mle_output$oregon_7_1[[9]]$value ## model with 144 parameters, minus 16
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,128)  
+    pval    
     
+```
+
+
+```{r}
+
 ###### Disturbence down
     
     ic=c(1, 0.95, 0.7029 ,0.0546)
