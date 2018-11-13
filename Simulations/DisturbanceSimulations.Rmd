@@ -19,17 +19,25 @@ ages = matrix(0,nrow,ncol)
 p.init= 0.01
 
 ## run simulation
-start = proc.time()
-ages = gap_disturb_raster(ages,p.init,ntime)
-proc.time()-start
+gfile = "ages.gap.RData"
+if(file.exists(gfile)){
+  load(gfile)
+  ages = ages.gap
+  sorted = sorted.gap
+} else {
+  start = proc.time()
+  ages = gap_disturb_raster(ages,p.init,ntime)
+  proc.time()-start
+}
 
 # Map
 image(log10(ages),xlab="",ylab="",xaxt="n",yaxt="n",asp=1)
 
 ## age distribution
+par(mar=c(5,5,4,2))
 nt=300
 time = 0:nt
-hist(ages+0.001,probability = TRUE,xlim=c(0,nt),breaks=nt,xlab="Age (years)",main="Gap Dynamics")
+hist(ages+0.001,probability = TRUE,xlim=c(0,nt),breaks=nt,xlab="Age (years)",main="Gap Dynamics",cex.main=1.75,cex.lab=1.75,cex.axis=1.5) #breaks=0:(max(ages)+1)
 lines(time,dgeom(time,p.init),col=3,lwd=3,type='s')
 
 ## aggregate age classes
@@ -40,29 +48,41 @@ ac[ac>n] <- n
 hist(ac)
 
 ## calculate adjacency matrix
-start = proc.time()
-r <- raster::raster(ncol=ncol, nrow=ncol)
-raster::values(r) <- ac #ages
-#foo <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
-test <- raster_to_age_matrix(r)
-proc.time()-start  ## took ~2 min at 1000x and 10 classes
-
-
-## sort adjacency matrix
+if(!file.exists(gfile)){
+  start = proc.time()
+  r <- raster::raster(ncol=ncol, nrow=ncol)
+  raster::values(r) <- ac #ages
+  #foo <- get_ratio_basic(r,"test")  ## returns adj(size) by disturbance; can also use to construct size distribution
+  test <- raster_to_age_matrix(r)
+  proc.time()-start  ## took ~2 min at 1000x and 10 classes
+  
+  ## sort adjacency matrix
 ord <- order(as.numeric(rownames(test)))
 br <- test[ord,] ## sort by row
 sorted <- br[,ord] ## sorted adjacency matrix
 sorted <- sorted[,!is.na(colnames(sorted))]
 sorted <- sorted[!is.na(rownames(sorted)),]
+  
+}
 
 ## display matrix
-image(1:nrow(sorted), 1:ncol(sorted), log(sorted[,ncol(sorted):1]),col=terrain.colors(30), 
-      axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
-axis(3, 1:nrow(sorted), colnames(sorted)) ## top label
-axis(2, ncol(sorted):1, rownames(sorted))
+## initial version is transposed
+# image(1:nrow(sorted), 1:ncol(sorted), log(sorted[,ncol(sorted):1]),col=terrain.colors(30), 
+#       axes = FALSE,xlab="Age Class",ylab="Age Class",cex.lab=1.8)
+# axis(3, 1:nrow(sorted), colnames(sorted)) ## top label
+# axis(2, ncol(sorted):1, rownames(sorted))
+# for (y in 1:ncol(sorted))
+#   for (x in 1:nrow(sorted))
+#     text(x, ncol(sorted)-y+1, format(sorted[x,y],digits=2),cex=2)
+par(mar=c(2,5,7,2))
+image(1:nrow(sorted), 1:ncol(sorted), log(t(sorted[ncol(sorted):1,])),col=terrain.colors(30), 
+      axes = FALSE,ylab="Age Class",main="Age Class",cex.lab=1.8,xlab=" ",cex.main=1.8,font.lab=2)
+axis(3, 1:nrow(sorted), colnames(sorted),cex.axis=1.5) ## top label
+axis(2, ncol(sorted):1, rownames(sorted),cex.axis=1.5)
 for (y in 1:ncol(sorted))
   for (x in 1:nrow(sorted))
-    text(x, ncol(sorted)-y+1, format(sorted[x,y],digits=2),cex=2)
+    text(x, ncol(sorted)-y+1, format(sorted[y,x],digits=2),cex=2)
+
 
 ## if needed, aggregate the matrix
 ## this code was developed when age wasn't aggregated first
@@ -77,7 +97,8 @@ if(FALSE){
 
 #save simulations for later
 ages.gap = ages
-save(ages.gap,file="ages.gap.RData")
+sorted.gap = sorted
+save(ages.gap,sorted.gap,file=gfile)
 ```
 
 
@@ -103,16 +124,17 @@ if(file.exists(sfile)){
 }
 
 ## full image
-image(1:nrow,1:ncol, log10(ages.spread),xlab="",ylab="",asp=1)
-rect(800,800,900,900,col=NA,lwd=2)
+#image(1:nrow,1:ncol, log10(ages.spread),xlab="",ylab="",asp=1)
+#rect(800,800,900,900,col=NA,lwd=2)
 
 ## inset image
 image(800:900,800:900,log10(ages.spread[800:900,800:900]),xlab="",ylab="",asp=1)
 
 ## age distribution
+par(mar=c(5,5,4,2))
 nt=100
 time = 0:nt
-hist(ages.spread+0.0001,probability = TRUE,xlim=c(0,nt),breaks=0:years,xlab="Age (years)",main="Contagious Spread")
+hist(ages.spread+0.0001,probability = TRUE,xlim=c(0,nt),breaks=0:years,xlab="Age (years)",main="Contagious Spread",cex.main=1.75,cex.lab=1.75,cex.axis=1.5)
 #lines(time,dgeom(time,1/mean(ages.spread)),col=3,lwd=3,type='s')
 lines(time,dgeom(time,p.init/ps),col=3,lwd=3,type='s')
 
@@ -162,6 +184,16 @@ for (y in 1:ncol(sorted))
     a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
     text(x, ncol(sorted)-y+1, a,cex=1)
   }
+
+## matrix transposed
+par(mar=c(2,5,7,2))
+image(1:nrow(sorted), 1:ncol(sorted), log(t(sorted[ncol(sorted):1,])),col=terrain.colors(30), 
+      axes = FALSE,ylab="Age Class",main="Age Class",cex.lab=1.8,xlab=" ",cex.main=1.8,font.lab=2)
+axis(3, 1:nrow(sorted), colnames(sorted),cex.axis=1.5) ## top label
+axis(2, ncol(sorted):1, rownames(sorted),cex.axis=1.5)
+for (y in 1:ncol(sorted))
+  for (x in 1:nrow(sorted))
+    text(x, ncol(sorted)-y+1, format(sorted[y,x],digits=2),cex=2)
 
 ## diagonal decay
 plot(0:n,diag(sorted),ylim=c(0,sorted[1,1]))
@@ -442,8 +474,8 @@ if(file.exists(s10file)){
 }
 
 ## full image
-image(1:nrow,1:ncol, log10(ages.spread10),xlab="",ylab="",asp=1)
-rect(800,800,900,900,col=NA,lwd=2)
+#image(1:nrow,1:ncol, log10(ages.spread10),xlab="",ylab="",asp=1)
+#rect(800,800,900,900,col=NA,lwd=2)
 
 ## inset image
 image(800:900,800:900,log10(ages.spread10[800:900,800:900]),xlab="",ylab="",asp=1)
@@ -501,6 +533,17 @@ for (y in 1:ncol(sort10))
     a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
     text(x, ncol(sort10)-y+1, a,cex=1)
   }
+##transposed
+par(mar=c(2,5,7,2))
+image(1:nrow(sort10), 1:ncol(sort10), log(t(sort10[ncol(sort10):1,])),col=terrain.colors(30), 
+      axes = FALSE,ylab="Age Class",main="Age Class",cex.lab=1.8,xlab=" ",cex.main=1.8,font.lab=2)
+axis(3, 1:nrow(sort10), colnames(sort10),cex.axis=1.5) ## top label
+axis(2, ncol(sort10):1, rownames(sort10),cex.axis=1.5)
+for (y in 1:ncol(sort10))
+  for (x in 1:nrow(sort10))
+    text(x, ncol(sort10)-y+1, format(sort10[y,x],digits=2),cex=2)
+
+
 
 ## display analytical matrix
 image(1:nrow(aggAdj), 1:ncol(aggAdj), log(aggAdj[,ncol(aggAdj):1]),col=terrain.colors(30), 
@@ -513,6 +556,16 @@ for (y in 1:ncol(aggAdj))
     a = ifelse(a > 0.01,format(a,digits=2), format(a,digits=1,scientific = TRUE))
     text(x, ncol(aggAdj)-y+1, a,cex=1)
   }
+
+## analytical transposed
+par(mar=c(2,5,7,2))
+image(1:nrow(aggAdj), 1:ncol(aggAdj), log(t(aggAdj[ncol(aggAdj):1,])),col=terrain.colors(30), 
+      axes = FALSE,ylab="Age Class",main="Age Class",cex.lab=1.8,xlab=" ",cex.main=1.8,font.lab=2)
+axis(3, 1:nrow(aggAdj), colnames(aggAdj),cex.axis=1.5) ## top label
+axis(2, ncol(aggAdj):1, rownames(aggAdj),cex.axis=1.5)
+for (y in 1:ncol(aggAdj))
+  for (x in 1:nrow(aggAdj))
+    text(x, ncol(aggAdj)-y+1, format(aggAdj[y,x],digits=2),cex=2)
 
 ## diagonal decay
 plot(0:n,diag(sort10),ylim=c(0,sort10[1,1]))
