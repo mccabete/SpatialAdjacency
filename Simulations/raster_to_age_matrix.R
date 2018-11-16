@@ -1,10 +1,10 @@
 # Note: this function interperates differences in cell 
 # values to be differences in age. This doesn't have to be the case. 
-# requires raster and rlang packages, corner_number and edge_number functions
+# requires raster and rlang packages
 
 library(rlang)
-source("./edge_number.R")
-source("./corner_number.R")
+# source("./edge_number.R")
+# source("./corner_number.R")
 
 
 raster_to_age_matrix <- function(r) {
