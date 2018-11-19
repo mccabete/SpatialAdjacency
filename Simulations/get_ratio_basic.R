@@ -4,23 +4,15 @@ source("./edge_to_interior.R")
 source("./get_interior_vertices.R")
 source("./get_outer_edges.R")
 
-if(FALSE){
-  ## used for testing, but dangerous to `source` as it may delete your data
-r <- raster(ncol=5, nrow=5)
-values(r) <- c(NA,0, 0,NA,NA,
-               NA,2,3,2,NA,
-               NA,2,2,2,NA,
-               NA,0,NA,NA,NA,
-               NA,NA,NA,NA,NA)
-}
 
 get_ratio_basic <- function ( r, date = NA) {
   
-    values(r) <- values(r) +1 #If zero's exist, want them to be offical age class
+    values(r) <- values(r) +1 #If zero's exist, want them to be offical age class.
     ages <- unique(r)
     results <- list()
     results_final <- list()
-    
+  
+## Subset raster by disturbence/ age class
 for (j in seq_along(ages)){
   fire_only <- r
   fire_only[ fire_only != ages[j] ] <- NA
@@ -28,7 +20,7 @@ for (j in seq_along(ages)){
   fire_clump <- clump(fire_only, gaps = TRUE, directions = 4 )
   clump_num <- unique(fire_clump)
   
-  
+  ## Subset to each clump within a class
   for ( i in seq_along(clump_num)){
     clump_id<-c(i, NA)
     tmp <- getValues(fire_clump)
@@ -37,8 +29,11 @@ for (j in seq_along(ages)){
     values(clump) <- tmp
     rm(tmp)
     
+    ## Get interior to total ratio for clump
     out <- edge_to_interior(clump)
     
+    
+    ## Get information on clump
     results$ratio[i] <- as.numeric(out$ratio)
     results$size[i] <- as.numeric(out$size)
     results$age[i] <- ages[j]

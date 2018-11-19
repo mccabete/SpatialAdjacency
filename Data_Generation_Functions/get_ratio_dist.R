@@ -1,9 +1,6 @@
 get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region = FALSE, path_ecoregion) {
   
-  
-
- 
-  ### Attempt to subset just single disturbence
+  ## Optional subset by disturbence
   if( !is.null(dist) & !is.null(text)){
     csv_fire <- csv[grep(text, csv$Dist_Type),]
   
@@ -16,6 +13,7 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
   values(fire_only) <- tmp
   rm(tmp)
   
+  ## Devide rester into clumped disturbences
   fire_clump <- clump(fire_only, gaps = FALSE, directions = 4)
   
   }else {
@@ -28,13 +26,14 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
   stack <- addLayer(fire_only, fire_clump)
 
   
-  
   clump_num <- unique(fire_clump)
   
 
   results <- list()
   
   for ( i in seq_along(clump_num)){
+    
+    ## Subset to just a single clump
     clump_id<-c(i, NA)
     tmp <- getValues(fire_clump)
     tmp[!(tmp %in% clump_id)] <- NA
@@ -43,17 +42,22 @@ get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region =
     rm(tmp)
     
     
-    out <- edge_to_interior(clump)
+    ## Get the interior/ total ratio
+    out <- edge_to_interior(clump) 
+    
+    ## Extract information about clump
     dist_number <- unique(stack$US_DIST2014.US_DIST2014[stack$clumps == i])
     
     dist_names <- droplevels(csv_fire$Dist_Type[csv_fire$Value %in% dist_number])
-    dist_names <- unique(dist_names)
+    dist_names <- unique(dist_names) 
     
+    ## Add to results object
     results$ratio[i] <- as.numeric(out$ratio)
     results$size[i] <- as.numeric(out$size)
     results$Dist_number[i] <- dist_names
-    results$dist_name[i] <- paste(dist_names, collapse = ',')
-    results$ids[i] <- paste(dist_number, collapse = ' ')
+    results$dist_name[i] <- paste(dist_names, collapse = ',') # Provide all the Disturbence types within clump
+  
+    results$ids[i] <- paste(dist_number, collapse = ' ') # Preserve LANDFIRE ID's 
     rm(out)
     
    
