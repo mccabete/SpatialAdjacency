@@ -1,4 +1,5 @@
-#Tests raster_to_age_matrix
+# Tests how long raster_to_age_matrix takes to run for different dimentions of raster. 
+# Usefull for checking feasibility of local runs
 
 r <- raster(ncol=5, nrow =5)
 

@@ -1,61 +1,19 @@
 ---
-title: "Untitled"
+title: "Draft of Liklyhood"
 author: "Tempest McCabe"
 date: "10/20/2018"
 output: html_document
 ---
 
-```{r}
-#library(truncnorm)
 
-### Stealing Lab 7'd definition of a truncated normal distribution 
-
-#dtnorm <- function(x,mu,sd, upper, lower){ # Aleready in Log domain. 
-#  y = dnorm(x,mu,sd,log=TRUE)-log(pnorm(upper,mu,sd)-pnorm(lower,mu,sd))
-#  y[x< lower | x > upper] = -Inf #I'm truncating the wrong varible
-#  return(y)
-#}
-
-#dtnorm <- function(x,mu,sd){
-#  y = dnorm(x,mu,sd,log=TRUE)-log(pnorm(1,mu,sd)-pnorm(0,mu,sd))
-#  y[x<0 | x > 1] = -Inf
-#  return(y)
-#}
-#xseq = seq(-0.5,1,length=100)
-#plot(xseq,exp(dtnorm(xseq,0.25,0.3,1, 0)),type='l')
-#lines(xseq,dnorm(xseq,0.25,0.3),col=2)
-
-#slope <- 1 # IC
-#sd <- 1 # IC
-#intercept <- 1 #IC
-#param <- c(intercept, slope, sd)
-#ratio_probability_size_given <- function (param) {
-#  -sum(  dtnorm(fire_only$ratio, (param[1] + param[2]*fire_only$sizw), param[3], #upper_bound_ratios(fire_only$sizw), lower_bound_ratios(fire_only$sizw)))
-#}
-
-#test <- nlm(ratio_probability_size_given,c(0.00001, 0.00001, 0.00001)) #Doesn't work super well
-#param <- c(0.5, 1)
-#opt <- optim(param, ratio_probability_size_given, method="L-BFGS-B")
-
-```
-
-## Trying modifide code from lab 9
+## Experiment with different MLE funcitons
 
 ```{r, echo= TRUE}
-#test_dataset <- na.omit(wildfire)
 
-#ic   <- c(2,2,2) ## initial guess
-#beta <- c(0.002,0.0002,0.002)
-#LnL  <- function(beta){  ## define likelihood
-#  -sum(dbinom(test_dataset$ratio,beta[1] + beta[2]*test_dataset$sizw,beta[3], log = TRUE))
-#}
-#test <- LnL(ic) ## verify likelihood function works
-#PR2  <- nlm(LnL,ic) ## maximize the likelihood
-#PR2
 
 test_dataset <- na.omit(wildfire)
 
-ic   <- c(10,1,0.1) ## initial guess
+ic=c(2.5,1,1,1) ## initial guess
 #beta <- c(0.002,0.0002,0.002)
 MMLnL  <- function(beta){  ## define likelihood
   LL = -sum(dnorm(test_dataset$ratio,(beta[2]*test_dataset$sizw)/(beta[1]+test_dataset$sizw),beta[3], log = TRUE))
@@ -88,14 +46,14 @@ monoLnL <- function(beta){  ## define likelihood
 test <- monoLnL(ic)
 PRmono  <- optim(ic,monoLnL,method="L-BFGS-B")
 
-ic=c(10,1,2,1)
+ic=c(2.5,1,1,1)
 MMLnLpower  <- function(beta){  ## define likelihood
   LL = -sum(dnorm(test_dataset$ratio,(beta[2]*test_dataset$sizw^beta[3])/(beta[1]+test_dataset$sizw^beta[3]),beta[4], log = TRUE))
   print(LL)
   if(!is.finite(LL)) return(1000)
   return(LL)
 }
-PRMMpower  <- optim(ic,MMLnLpower,method="L-BFGS-B") ## 
+PRMMpower  <- optim(ic,MMLnLpower,method="SANN") ## 
 
 ic=c(4,1,2,1)
 hollingIV  <- function(beta){  ## define likelihood
@@ -134,17 +92,3 @@ lines(xseq, (PRhollingIV$par[2]*xseq^2/(PRhollingIV$par[1] + PRhollingIV$par[3]*
 ```
 
 
-# using glm function
-```{r}
-PR1 <- glm(final$ratio ~ final$sizw, family=binomial(link="cauchit"))
-
-plot(PR1$model$`final$sizw`, PR1$model$`final$ratio`, xlim = c(0, 1000))
-lines(PR1$model$`final$sizw`, PR1$fitted.values, type = "p", col = "red", xlim = c(0, 1000))
-lines(sort(PR1$model$`final$sizw`),sort((PR1$fitted.values/0.03571)*test[2]), col = "red")
-lines(sort(PR1$model$`final$sizw`),sort((PR1$fitted.values/0.03571)*test[4]), col = "blue")
-
-
-library(MASS)
-
-test <- confint(lm)
-```

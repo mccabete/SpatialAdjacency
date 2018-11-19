@@ -1,15 +1,16 @@
 # Note: this function interperates differences in cell 
 # values to be differences in age. This doesn't have to be the case. 
-# requires raster and rlang packages, corner_number and edge_number functions
+# requires raster and rlang packages
 
 library(rlang)
-source("./edge_number.R")
-source("./corner_number.R")
+# source("./edge_number.R")
+# source("./corner_number.R")
 
 
 raster_to_age_matrix <- function(r) {
   
-  ## Add a frame of NA's
+  ## Add a frame of NA's. This prevents artificial inflation of adjacentcy 
+  # Also prevents need for explicit speration fo border and corner cases
   index_r <- cbind( values(r), seq(1:ncell(r)))
   r_ncol <- ncol(r)
   r_nrow <- nrow(r)
@@ -88,10 +89,6 @@ raster_to_age_matrix <- function(r) {
       
       
       adj <- adjacent(r, cells = cell_num_main,target = cell_num_small) 
-      #adj <- as.matrix(adj)
-      #corner_indecies <- corner_number(nrow, ncol, give_indexes = TRUE)
-      #adj_corners <- unique(adj[adj %in% corner_indecies])
-      #adj_corners <- as.matrix(adj_corners)
      
       
       if ( is.na(age_main)){
@@ -105,28 +102,6 @@ raster_to_age_matrix <- function(r) {
     
       }
       
-      # Calculating how many times age_small is adj to age_large
-      # if (is_empty(adj)){
-      #   count_small <- 0
-      # 
-      # }else{
-      # 
-      # 
-      #   if (rlang::is_empty(adj_corners)) {
-      #     count_small <- length(adj[1])
-      #   }else{
-      #     if (length(adj[1]) > length(adj_corners[1,])) {
-      #       count_small <- length(adj[1]) - (2*length(adj_corners[1,])) #the number of corners times the number of "illegal" adj's
-      #     }
-      #     if (length(adj[1]) == length(adj_corners[1,])) {
-      #       count_small <- 0 # this may be wrong
-      #       print("The only adjacentcies were wrap-around adjacentcies. Setting to zero.")
-      #     }
-      #   }
-      # 
-      # 
-      # }
-      
       if (is_empty(adj)){
         count_small <- 0
       }else {
@@ -139,12 +114,11 @@ raster_to_age_matrix <- function(r) {
       }
       
       
-      ## get total possible adjacentcies (accounting for corners and boarders)
-      #edge <- edge_number(nrow, ncol, index_vector = cell_num_main)
-      #corner <- corner_number(nrow, ncol, index_vector = cell_num_main)
-      total_possible <- count*4 #- (edge + corner))*4) + (edge * 3) + (corner*2)
+      ## get total possible adjacentcies
+      total_possible <- count*4 
     
-      
+     
+      ## existing ajacentcies as ratio of possible adjacentcies 
       percent <-  count_small / total_possible
       #cat( age_main,"adjacent to",age_small,"Percent",percent, count_small)
       age_matrix[j,i] <- percent
