@@ -597,7 +597,7 @@ run_optim <- function (conditional, disturbences_names){
     
      ic=c(4, 0.94, 0.7029 ,0.0546)
     conditional <- single_disturbence$sizw > 3
-    mle_output$all_dist <- list()
+    mle_output <- list()
     failed_total <- 0
     failed_names <- c("")
     length_dists <- 0
