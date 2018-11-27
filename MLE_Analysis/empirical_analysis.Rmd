@@ -450,7 +450,11 @@ or_7_1 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[cond
  or_subset <- length(single_disturbence[oregon_model_conditional,]$ratio) == (length(single_disturbence[conditional_or_6_2 ,]$ratio) + length(single_disturbence[conditional_or_7_1 ,]$ratio))
  
  print(paste("Valid subset?", (fl_subset & or_subset)))
-     
+```
+ 
+ 
+```{r}
+
 ## disturbence classes within ecoregion within state
 ic=c(2.5,1,1,1)
 
