@@ -1,0 +1,848 @@
+---
+title: "Sensitivity_of_MLE_fits"
+author: "Tempest McCabe"
+date: "11/19/2018"
+output: html_document
+---
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(MASS)
+library(ggridges)
+library(RColorBrewer)
+```
+
+# read in data
+
+```{r, echo= TRUE, message=FALSE, warning=FALSE}
+
+florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_3_2014dm2.csv", header = TRUE)
+florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_5_2014dm2.csv", header = TRUE)
+  
+oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_6_2_2014dm2.csv", header = TRUE)
+oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_7_1_2014dm2.csv", header = TRUE)
+```
+
+# Upper + lower interior/ total ratio Helper functions
+
+These functions provide the bounds on upper and lower interior / total ratios for different numbers of pixels. 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+upper_bound_ratios <- function(x){
+  upper <- rep(NA, length(x))
+  edge <- rep(NA, length(x))
+  interior <- rep(NA, length(x))
+  
+  ## get edges
+  for(i in seq_along(x)){
+    smaller_sqrt <- floor(sqrt(x[i]))
+    smaller_square <- smaller_sqrt^2
+    
+    larger_sqrt <- ceiling(sqrt(x[i]))
+    
+    remainder <- x[i] %% smaller_square
+    
+    if (remainder > smaller_sqrt){
+      edge[i] <- 4 * larger_sqrt
+    }
+    
+    if (remainder <= smaller_sqrt){
+      edge[i] <- (2*smaller_sqrt) + 2*(1+smaller_sqrt)
+    }
+    
+    if (remainder == 0){
+      edge[i] <- 4 * larger_sqrt
+    }
+  }
+  
+  #get interiors
+  for (i in seq_along(x)){
+    interior[i] <- 4 * x[i]
+    interior[i] <- interior[i] - edge[i]
+  }
+  
+  for (i in seq_along(x)){
+    if (x[i] == 1){
+      upper[i] <- 0
+      next  
+    }
+    if (x[i] == 2){
+      upper[i] <- 0.25
+      next
+    }
+    if (x[i] == 3){
+      upper[i] <- 0.5
+      next 
+    }
+    
+    upper[i] <- interior[i] / (interior[i] + edge[i])
+  }
+  
+  
+  return(upper)
+}
+
+lower_bound_ratios <- function(x){
+  lower <- rep(NA, length(x))
+  edge <- rep(NA, length(x))
+  interior <- rep(NA, length(x))
+  
+  for (i in seq_along(x)){
+    if(x[i] == 1){
+      edge[i] <- 4
+      next
+    }
+    
+    if (x[i] == 2){
+      edge[i] <- 6  
+      next
+    }
+    
+      edge[i] <- (2 * (x[i] - 2)) + 6 # The six accounts for sides of the two end pixels 
+  }
+  
+  for (i in seq_along(x)){
+    if(x[i] == 1){
+    interior[i] <- 0
+     lower[i] <- interior[i] / (interior[i] + edge[i])
+      next
+    }
+    
+    if (x[i] == 2){
+     interior[i] <- 2
+      lower[i] <- interior[i] / (interior[i] + edge[i])
+      next
+    }
+    
+     interior[i] <- ((4 * x[i]) - edge[i])
+     lower[i] <- interior[i] / (interior[i] + edge[i])
+  }
+  return (lower)
+}
+
+
+```
+
+# Sifting out edge-cases with artificial ratio inflation
+
+The base raster adjacency function that we used when calculating interior/total ratios made a wrap-around adjacency assumption, inflating the adjacency of corner and edge pixels. We corrected for it by setting ratios above the maximum to NA. 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+oregon_6_2$eco_II <- "6.2"  ## Put in Ecoregion labels 
+oregon_7_1$eco_II <- "7.1"
+florida_8_3$eco_II <- "8.3"
+florida_8_5$eco_II <- "8.5"
+
+florida <- rbind(florida_8_3, florida_8_5) 
+oregon <- rbind(oregon_6_2, oregon_7_1)
+
+florida$size_ha <- florida$sizw * 0.09  ## Convert Pixels to ha
+oregon$size_ha <- oregon$sizw * 0.09
+
+florida$state <- "FL"  ## State Labels 
+oregon$state <- "OR"
+final <- rbind(florida, oregon)
+
+
+final$ratio[(final$ratio > 0.25) & (final$sizw == 2)] <- NA
+final$ratio[(final$ratio > 0.33) & (final$sizw == 3)] <- NA
+final$ratio[(final$ratio > 0.50) & (final$sizw == 4)] <- NA
+final$ratio[(final$ratio > 0.5 ) & (final$sizw == 5)] <- NA
+final$ratio[(final$ratio > 0.55333333) & (final$sizw == 6)] <- NA
+final$ratio[(final$ratio > 0.5714286) & (final$sizw == 7)] <- NA
+final$ratio[(final$ratio >  0.7083333) & (final$sizw == 12)] <- NA
+final$ratio[(final$ratio >  0.7631579) & (final$sizw == 19)] <- NA
+
+```
+
+
+## Analyses & Descriptive statistics
+
+# Subset Dataset for percentenge estimates of mixed disturbence types, and unknowns
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+unknowns <- final[grep("Unknown", final$dist_name) ,]   
+no_unknowns <- dplyr::anti_join(final, unknowns, by = "dist_name") 
+mixed_disturbence <- final[grep(",", final$dist_name), ]
+single_disturbence <- dplyr::anti_join(final, mixed_disturbence, by = "dist_name")
+
+single_disturbence <- na.omit(single_disturbence)
+
+no_unknowns_mixed_disturbence <- dplyr::anti_join(mixed_disturbence, unknowns, by = "dist_name") 
+no_unknowns_single_disturbence <- dplyr::anti_join(single_disturbence, unknowns, by = "dist_name")
+unknown_only <- dplyr::anti_join(unknowns, mixed_disturbence, by = "dist_name")
+
+
+disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") # These are the disturbences that are common between 4 ecoregions
+
+## Set up common color schemes 
+
+disturbence_colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6')
+eco_region_colors <- c('#df65b0', '#67001f', '#081d58','#7fcdbb') # Oregon then Florida
+
+state_colors <- c('#980043', "#225ea8")
+```
+
+
+
+
+
+
+
+## MLE Curve fitting
+
+The Modified Michaelis Menten curve was chosen based on it's ability to match the null-model data. Other MLE curves considered are in the Draft of Likelihood file. Curves were compared excluding single, double, and triple pixels. 
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+## Function defining the modifide Michaelis Menten curve
+ic=c(4,1,1,1)
+MMLnLpower  <- function(beta, ratio, sizw){  ## define likelihood
+  LL = -sum(dnorm(ratio,(beta[2]*(sizw^beta[3]))/(beta[1]+(sizw^beta[3])),beta[4], log = TRUE))
+  print(LL)
+  if(!is.finite(LL)) return(1000)
+  return(LL)
+}
+```
+
+
+
+## Sensititvity
+
+# Finding Lower and upper bound initial conditions
+
+```{r}
+
+length <- length(single_disturbence[null_model_conditional,]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+ic=c(1.416, 0.984, 0.444, 0.101)
+
+upper_params <- optim(ic,MMLnLpower,method= "Nelder-Mead", ratio = upper, sizw = seq) 
+
+ic=c(4, 0.984, 1, 0.101)
+lower_params <- optim(ic,MMLnLpower,method= "Nelder-Mead", ratio = lower, sizw = seq) 
+
+
+
+ggplot() +
+  geom_line(aes(x =seq  , y = (upper )), color = "black")+
+  geom_line(aes(x =seq , y = (lower )), color = "black")+
+  geom_line(aes(x = seq, y = ( upper_params$par[2]*seq^upper_params$par[3])/(upper_params$par[1] + seq^upper_params$par[3]) ), color = "blue")+ 
+  geom_line(aes(x = seq, y = (lower_params$par[2]*seq^lower_params$par[3])/(lower_params$par[1] + seq^lower_params$par[3]) ), color = "red")+ #plotting fl_8_5
+  scale_x_continuous(trans="log") +
+theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Area ha") +
+  ylab("Interior / Total ratio")+ 
+  ggtitle("Generic Upper and lower vs MLE found parameters")+
+  theme(panel.background = element_blank())
+
+paste("estimated Upper bound parameters:", paste(upper_params$par, collapse = ","))
+paste("estimated lower bound parameters:", paste(lower_params$par, collapse = ","))
+
+```
+
+# State-level hierarchy 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+## Null
+state_to_null <- function(initial, method){
+   
+   initial <- as.data.frame(initial)
+   rows <- dim(initial)[1]
+   results <- list()
+   iterator <- 0
+   
+for(i in 1:length(method)){
+  for(j in 1:rows){
+
+ic= as.vector(initial[j,] )
+null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
+all_param <- optim(ic,MMLnLpower,method= method[i], ratio = single_disturbence[null_model_conditional,]$ratio, sizw = single_disturbence[null_model_conditional,]$sizw) 
+
+## Oregon and Florida
+oregon_model_conditional <- null_model_conditional &  single_disturbence$state =="OR"
+oregon_param <- optim(ic,MMLnLpower,method= method[i], ratio = single_disturbence[ oregon_model_conditional,]$ratio, sizw = single_disturbence[oregon_model_conditional,]$sizw)
+
+
+florida_model_conditional <- null_model_conditional &  single_disturbence$state =="FL"
+florida_param <- optim(ic,MMLnLpower,method= method[i],ratio = single_disturbence[florida_model_conditional,]$ratio, sizw = single_disturbence[florida_model_conditional,]$sizw)
+
+## Check assumptions
+check_if_valid_subset <- length(single_disturbence[florida_model_conditional,]$ratio) + length(single_disturbence[oregon_model_conditional,]$ratio) == length(single_disturbence[null_model_conditional,]$ratio)
+
+check_if_converge <- florida_param$convergence == 0 & oregon_param$convergence == 0 & all_param$convergence == 0
+
+
+## Compare? 
+dev.null <- 2*all_param$value         ## null model
+dev.tmt  <- 2*oregon_param$value + 2*florida_param$value      
+LR       <- dev.null - dev.tmt        ## Likelihood ratio
+pval     <- 1 - pchisq(LR,4)
+
+## iterate
+iterator <- iterator + 1 
+print(iterator)
+### Result Object ###
+
+## Sensitivity to optimization
+#results <- as.matrix(results)
+results$ic[iterator] <-  paste(ic, collapse = ',')
+results$method[iterator] <- method[i]
+results$pval[iterator] <- pval
+results$null_l[iterator] <- 2*all_param$value 
+results$tmt_l[iterator] <- 2*oregon_param$value + 2*florida_param$value
+
+## Herarchy-level parameters
+results$null_param[iterator] <-  paste( all_param$par, collapse = ',')
+results$oregon_param[iterator] <- paste( oregon_param$par, collapse = ',')
+results$florida_param[iterator] <- paste(florida_param$par, collapse = ',')
+
+## Check for errors
+results$all_converge[iterator] <- check_if_converge
+results$valid_subset[iterator] <- check_if_valid_subset
+
+  }
+}
+   results <- as.data.frame(results)
+   print(results)
+return(results)
+ }
+
+initial <- rbind(lower_params$par, c(3,0.7,1,0.0007),c(2.5,0.8,0.9,0.001), c(4, 0.5, 0.8, 0.0009),  upper_params$par, c(1.416, 0.984, 0.444, 0.101), c(0.0005,0.5,1,1), c(2.5,1,1,1),c(4, 0.94, 0.7029 ,0.0546), c(4,1,1,1)) # after upper_param, all the IC's in my analysis code
+
+method <- c("Nelder-Mead","BFGS", "L-BFGS-B")
+test <- NA
+test <- state_to_null(initial, method)
+
+state_to_null_output <- test
+#SANN_reuslts <- dataframe_from_optim
+#write.csv(dataframe_from_optim, "SANN_results")
+
+```
+
+
+## Ecoregion within state
+
+```{r}
+
+eco_to_state <- function(initial, method, tmt_l){
+  
+   initial <- as.data.frame(initial)
+   rows <- dim(initial)[1]
+   results <- list()
+   iterator <- 0
+
+## create object of all OR and FL parameters
+# oregon_param <- list()
+# for (i in seq_along(oregon_row)){
+# tmp <- strsplit(as.vector(oregon_row[i]), split = ",")
+# tmp <- unlist(tmp)
+# oregon_param$par[i] <- tmp
+# }
+# 
+# florida_param <- list()
+# for (i in seq_along(florida_row)){
+# tmp <- strsplit(as.vector(florida_row[i]), split = ",")
+# tmp <- unlist(tmp)
+# florida_param$par[i] <- tmp
+# }
+
+
+for(i in 1:length(method)){
+  for(j in 1:rows){
+
+ic= as.vector(initial[j,] )
+
+## Conditionals 
+
+# Old
+null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
+oregon_model_conditional <- null_model_conditional &  single_disturbence$state =="OR"
+florida_model_conditional <- null_model_conditional &  single_disturbence$state =="FL"
+
+# new
+conditional_fl_8_3  <- null_model_conditional & single_disturbence$state =="FL" & single_disturbence$eco_II == "8.3" 
+conditional_fl_8_5 <- null_model_conditional &  single_disturbence$state =="FL" & single_disturbence$eco_II == "8.5" 
+conditional_or_6_2 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "6.2" 
+conditional_or_7_1 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "7.1" 
+
+
+fl_8_3 <- optim(ic,MMLnLpower,method= method[i], ratio = single_disturbence[conditional_fl_8_3,]$ratio, sizw = single_disturbence[conditional_fl_8_3,]$sizw)
+fl_8_5 <- optim(ic,MMLnLpower,method= method[i], ratio = single_disturbence[ conditional_fl_8_5,]$ratio, sizw = single_disturbence[conditional_fl_8_5,]$sizw)
+
+or_6_2 <- optim(ic,MMLnLpower,method= method[i], ratio = single_disturbence[conditional_or_6_2,]$ratio, sizw = single_disturbence[conditional_or_6_2,]$sizw)
+or_7_1 <- optim(ic,MMLnLpower,method= method[i], ratio = single_disturbence[conditional_or_7_1,]$ratio, sizw = single_disturbence[conditional_or_7_1,]$sizw)
+
+
+## Check assumptions
+ fl_subset <- length(single_disturbence[florida_model_conditional,]$ratio) == (length(single_disturbence[conditional_fl_8_3 ,]$ratio) + length(single_disturbence[conditional_fl_8_5 ,]$ratio))
+ 
+ or_subset <- length(single_disturbence[oregon_model_conditional,]$ratio) == (length(single_disturbence[conditional_or_6_2 ,]$ratio) + length(single_disturbence[conditional_or_7_1 ,]$ratio))
+ 
+ print(paste("Valid subset?", (fl_subset & or_subset)))
+ check_if_valid_subset <- fl_subset & or_subset
+
+check_if_converge <- fl_8_3$convergence == 0 & fl_8_5$convergence == 0 & or_6_2$convergence == 0 & or_7_1$convergence == 0
+
+for( n in seq_along(tmt_l)){ ## Compare to different L values from previous function 
+
+## Compare? 
+    dev.null <- tmt_l[n]     ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2*fl_8_3$value + 2*fl_8_5$value + 2*or_6_2$value + 2*or_7_1$value  # 8 params in the null, 16 - 4
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,8)
+    pval 
+    
+## iterate
+iterator <- iterator + 1 
+print(iterator)
+
+### Result Object ###
+
+## Sensitivity to optimization
+#results <- as.matrix(results)
+results$ic[iterator] <-  paste(ic, collapse = ',')
+results$method[iterator] <- method[i]
+results$pval[iterator] <- pval
+results$null_l[iterator] <- dev.null
+results$tmt_l[iterator] <- dev.tmt
+
+## Herarchy-level parameters
+results$or_7_1_param[iterator] <- paste(or_7_1$par, collapse = ',')
+results$or_6_2_param[iterator] <- paste(or_6_2$par, collapse = ',')
+results$fl_8_3_param[iterator] <- paste(fl_8_3$par, collapse = ',')
+results$fl_8_5_param[iterator] <- paste(fl_8_5$par, collapse = ',')
+
+## Check for errors
+results$all_converge[iterator] <- check_if_converge
+results$valid_subset[iterator] <- check_if_valid_subset
+
+    }
+  }
+}
+   results <- as.data.frame(results)
+   print(results)
+return(results)
+ }
+
+## Cut out uninformative likelyhoods before feeding into new function
+
+input <- state_to_null_output[state_to_null_output$tmt_l < 0 & state_to_null_output$all_converge == TRUE,]
+tml_l <- unique(signif(input$tmt_l)) ## NOTE: I AM ROUNDING LIKELYHOOD TO 1 DECIMAL PLACE TO REDUCE DIMENTIONALITY OF COMPARISONS, COULD EFFECT RESULTS IF CLOSE
+
+
+eco_to_state_output <- eco_to_state(initial, method, tml_l)
+
+
+
+```
+
+# Disturbence to null
+
+```{r}
+run_optim <- function (conditional, disturbences_names, method){
+  conditional <- conditional & single_disturbence$dist_name == disturbences_names
+  PR <-  optim(ic,MMLnLpower,method = method, ratio = single_disturbence[conditional,]$ratio, sizw = na.omit(single_disturbence[conditional,]$sizw))
+  return(PR)
+}
+
+disturbence_to_null <- function(initial, method, tmt_null, names){
+  
+   initial <- as.data.frame(initial)
+   rows <- dim(initial)[1]
+   results <- list()
+   iterator <- 0
+
+
+for(i in 1:length(method)){
+  for(j in 1:rows){
+
+ic= as.vector(initial[j,] )
+
+## Conditionals 
+null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
+oregon_model_conditional <- null_model_conditional &  single_disturbence$state =="OR"
+florida_model_conditional <- null_model_conditional &  single_disturbence$state =="FL"
+
+conditional_fl_8_3  <- null_model_conditional & single_disturbence$state =="FL" & single_disturbence$eco_II == "8.3" 
+conditional_fl_8_5 <- null_model_conditional &  single_disturbence$state =="FL" & single_disturbence$eco_II == "8.5" 
+conditional_or_6_2 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "6.2" 
+conditional_or_7_1 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "7.1" 
+
+
+
+## Running run_optim
+conditional <- single_disturbence$sizw > 3
+    mle_output$all_dist <- list()
+    failed_names <- c("")
+    length_dists <- 0
+  for (d in seq_along(names)){
+    
+  mle_output$all_dist[[d]] <- run_optim(conditional, names[d], method = method[i])
+  
+  if (mle_output$all_dist[[d]]$convergence > 0){
+    failed_names <- c(failed_names, names[d])
+  }
+  length_dists <- length_dists + length(single_disturbence[conditional_or_7_1 & single_disturbence$dist_name ==  names[d], ]$ratio)
+  
+  if(d == length(names)){
+    if(length_dists == length(single_disturbence[conditional_or_7_1,]$ratio)){
+      check_if_valid_subset <- TRUE
+    }else{
+      check_if_valid_subset <- FALSE
+    }
+  }
+  check_if_converge <- TRUE
+  
+  if(length(failed_names) > 1 ){ ## Temporary boolean
+    check_if_converge <- FALSE
+  }
+  }
+ 
+
+for( n in seq_along(tmt_null)){ ## Compare to different L values from previous function 
+
+## Compare? 
+    dev.null <- tmt_null[n]     ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2*mle_output$all_dist[[1]]$value + 2*mle_output$all_dist[[2]]$value + 2*mle_output$all_dist[[3]]$value + 2*mle_output$all_dist[[4]]$value + 2*mle_output$all_dist[[5]]$value + 2*mle_output$all_dist[[6]]$value + 2*mle_output$all_dist[[7]]$value  + 2*mle_output$all_dist[[8]]$value +2* mle_output$all_dist[[9]]$value   ## model with 9*4 parameters, minus 4 parameters is 32
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,34)  ## extreamly large pvalue
+    pval 
+    
+## iterate
+iterator <- iterator + 1 
+print(iterator)
+
+### Result Object ###
+
+## Sensitivity to optimization
+#results <- as.matrix(results)
+results$ic[iterator] <-  paste(ic, collapse = ',')
+results$method[iterator] <- method[i]
+results$pval[iterator] <- pval
+results$null_l[iterator] <- dev.null
+results$tmt_l[iterator] <- dev.tmt
+
+## Herarchy-level parameters
+results$unknown_param[iterator] <- paste(mle_output$all_dist[[1]]$par, collapse = ',')
+results$other_mechanical_param[iterator] <- paste(mle_output$all_dist[[2]]$par, collapse = ',')
+results$prescribed_fire_param[iterator] <- paste(mle_output$all_dist[[3]]$par, collapse = ',')
+results$wildfire_param[iterator] <- paste(mle_output$all_dist[[4]]$par, collapse = ',')
+results$thinning_param[iterator] <- paste(mle_output$all_dist[[5]]$par, collapse = ',')
+results$herbicide_param[iterator] <- paste(mle_output$all_dist[[7]]$par, collapse = ',')
+results$clearcut_param[iterator] <- paste(mle_output$all_dist[[8]]$par, collapse = ',')
+results$wildland_fire_param[iterator] <- paste(mle_output$all_dist[[9]]$par, collapse = ',')
+results$mastication_param[iterator] <- paste(mle_output$all_dist[[6]]$par, collapse = ',')
+
+## Check for errors
+results$all_converge[iterator] <- check_if_converge
+results$valid_subset[iterator] <- check_if_valid_subset
+results$failed_converge_names[iterator] <- paste(failed_names, collapse = ",")
+
+    }
+  }
+}
+   results <- as.data.frame(results)
+   print(results)
+return(results)
+}
+
+disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") 
+tmt_null <- unique(dataframe_from_optim$null_l)
+
+disturbence_to_null_output <- disturbence_to_null(initial = initial, method = method, tmt_null = tmt_null, names = disturbences_names)
+
+```
+
+## State within disturbence
+
+```{r}
+state_to_disturbence <- function(initial, method, tmt_null, names){
+  
+   initial <- as.data.frame(initial)
+   rows <- dim(initial)[1]
+   results <- list()
+   iterator <- 0
+
+
+for(i in 1:length(method)){
+  for(j in 1:rows){
+
+ic= as.vector(initial[j,] )
+
+## Conditionals 
+null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
+oregon_model_conditional <- null_model_conditional &  single_disturbence$state =="OR"
+florida_model_conditional <- null_model_conditional &  single_disturbence$state =="FL"
+
+conditional_fl_8_3  <- null_model_conditional & single_disturbence$state =="FL" & single_disturbence$eco_II == "8.3" 
+conditional_fl_8_5 <- null_model_conditional &  single_disturbence$state =="FL" & single_disturbence$eco_II == "8.5" 
+conditional_or_6_2 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "6.2" 
+conditional_or_7_1 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "7.1" 
+
+
+
+## Running run_optim
+
+# Florida
+conditional <- single_disturbence$sizw > 3 & single_disturbence$state == "FL"
+    mle_output$all_dist <- list()
+    failed_names <- c("")
+    length_dists <- 0
+  for (d in seq_along(names)){
+    
+  mle_output$all_dist_fl[[d]] <- run_optim(conditional, names[d], method = method[i])
+  
+  if (mle_output$all_dist_fl[[d]]$convergence > 0){
+    failed_names <- c(failed_names, names[d])
+  }
+  length_dists <- length_dists + length(single_disturbence[conditional_or_7_1 & single_disturbence$dist_name ==  names[d], ]$ratio)
+  
+  if(d == length(names)){
+    if(length_dists == length(single_disturbence[conditional_or_7_1,]$ratio)){
+      check_if_valid_subset <- TRUE
+    }else{
+      check_if_valid_subset <- FALSE
+    }
+  }
+  check_if_converge <- TRUE
+  
+  if(length(failed_names) > 1 ){ ## Temporary boolean
+    check_if_converge <- FALSE
+  }
+  }
+ 
+# Oregon
+conditional <- single_disturbence$sizw > 3 & single_disturbence$state == "OR"
+    mle_output$all_dist <- list()
+    failed_names <- c("")
+    length_dists <- 0
+  for (d in seq_along(names)){
+    
+  mle_output$all_dist_or[[d]] <- run_optim(conditional, names[d], method = method[i])
+  
+  if (mle_output$all_dist_or[[d]]$convergence > 0){
+    failed_names <- c(failed_names, names[d])
+  }
+  length_dists <- length_dists + length(single_disturbence[conditional_or_7_1 & single_disturbence$dist_name ==  names[d], ]$ratio)
+  
+  if(d == length(names)){
+    if(length_dists == length(single_disturbence[conditional_or_7_1,]$ratio)){
+      check_if_valid_subset <- TRUE
+    }else{
+      check_if_valid_subset <- FALSE
+    }
+  }
+
+  if(length(failed_names) > 1 ){ ## Temporary boolean
+    check_if_converge <- FALSE
+  }
+  }
+
+for( n in seq_along(tmt_null)){ ## Compare to different L values from previous function 
+
+## Compare? 
+    dev.null <- tmt_null[n]     ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2*mle_output$all_dist_fl[[1]]$value + 2*mle_output$all_dist_fl[[2]]$value + 2*mle_output$all_dist_fl[[3]]$value + 2*mle_output$all_dist_fl[[4]]$value + 2*mle_output$all_dist_fl[[5]]$value +2*mle_output$all_dist_fl[[6]]$value + 2*mle_output$all_dist_fl[[7]]$value + 2*mle_output$all_dist_fl[[8]]$value +  2*mle_output$all_dist_fl[[9]]$value + 
+      
+2*mle_output$all_dist_or[[1]]$value +
+2*mle_output$all_dist_or[[2]]$value + 2*mle_output$all_dist_or[[3]]$value + 2*mle_output$all_dist_or[[4]]$value + 2*mle_output$all_dist_or[[5]]$value + 2*mle_output$all_dist_or[[6]]$value + 2*mle_output$all_dist_or[[7]]$value + 2*mle_output$all_dist_or[[8]]$value +  2*mle_output$all_dist_or[[9]]$value   ## model with 
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,36)  
+    pval 
+    
+## iterate
+iterator <- iterator + 1 
+print(iterator)
+
+### Result Object ###
+
+## Sensitivity to optimization
+#results <- as.matrix(results)
+results$ic[iterator] <-  paste(ic, collapse = ',')
+results$method[iterator] <- method[i]
+results$pval[iterator] <- pval
+results$null_l[iterator] <- dev.null
+results$tmt_l[iterator] <- dev.tmt
+
+## Herarchy-level parameters
+# FL
+results$unknown_param_fl[iterator] <- paste(mle_output$all_dist_fl[[1]]$par, collapse = ',')
+results$other_mechanical_param_fl[iterator] <- paste(mle_output$all_dist_fl[[2]]$par, collapse = ',')
+results$prescribed_fire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[3]]$par, collapse = ',')
+results$wildfire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[4]]$par, collapse = ',')
+results$thinning_param_fl[iterator] <- paste(mle_output$all_dist_fl[[5]]$par, collapse = ',')
+results$herbicide_param_fl[iterator] <- paste(mle_output$all_dist_fl[[7]]$par, collapse = ',')
+results$clearcut_param_fl[iterator] <- paste(mle_output$all_dist_fl[[8]]$par, collapse = ',')
+results$wildland_fire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[9]]$par, collapse = ',')
+results$mastication_param_fl[iterator] <- paste(mle_output$all_dist_fl[[6]]$par, collapse = ',')
+
+# OR
+results$unknown_param_or[iterator] <- paste(mle_output$all_dist_or[[1]]$par, collapse = ',')
+results$other_mechanical_param_or[iterator] <- paste(mle_output$all_dist_or[[2]]$par, collapse = ',')
+results$prescribed_fire_param_or[iterator] <- paste(mle_output$all_dist_or[[3]]$par, collapse = ',')
+results$wildfire_param_or[iterator] <- paste(mle_output$all_dist_or[[4]]$par, collapse = ',')
+results$thinning_param_or[iterator] <- paste(mle_output$all_dist_or[[5]]$par, collapse = ',')
+results$herbicide_param_or[iterator] <- paste(mle_output$all_dist_or[[7]]$par, collapse = ',')
+results$clearcut_param_or[iterator] <- paste(mle_output$all_dist_or[[8]]$par, collapse = ',')
+results$wildland_fire_param_or[iterator] <- paste(mle_output$all_dist_or[[9]]$par, collapse = ',')
+results$mastication_param_or[iterator] <- paste(mle_output$all_dist_or[[6]]$par, collapse = ',')
+
+## Check for errors
+results$all_converge[iterator] <- check_if_converge
+results$valid_subset[iterator] <- check_if_valid_subset
+results$failed_converge_names[iterator] <- paste(failed_names, collapse = ",")
+
+    }
+  }
+}
+   results <- as.data.frame(results)
+   print(results)
+return(results)
+}
+
+disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") 
+
+tmt_null <- unique(disturbence_to_null_output$tmt_l)
+
+state_to_disturbence_output <- state_to_disturbence(initial = initial, method = method, tmt_null = tmt_null, names = disturbences_names)
+
+
+```
+# Exporting sensitivity CSV's 
+```{r}
+
+write.csv(state_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/state_to_null_output.csv")
+write.csv(eco_to_state_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/eco_to_state_output.csv")
+
+write.csv(disturbence_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/disturbance_to_null_output.csv")
+write.csv(state_to_disturbence_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/state_to_disturbance_output.csv")
+
+
+
+```
+
+# (In development) Visual Metrics 
+
+## Plotting parameters for visual comparison 
+
+```{r}
+conditional_list <- list(null_model_conditional, null_model_conditional & single_disturbence$state == "FL", null_model_conditional & single_disturbence$state == "OR" )
+
+plot_params <- function (dataframe_from_optim, conditional_list) {
+  
+  names <- names(dataframe_from_optim)
+  line_number <- length(grep("param", names))
+  just_params <- dataframe_from_optim[,grep("param", names)]
+  names <- names(just_params)
+  
+  ## Split params out of text and into seperate lines 
+  param_list <- list()
+  #names(param_list) <- c("beta", "alpha", "c", "sigma_sq", "line_name")
+  just_params <- as.matrix(just_params)
+
+  iterator <- 0
+  for(i in 1:line_number){
+    for(j in 1:length(just_params[,1])){
+      
+      iterator <- iterator + 1
+      tmp <- strsplit(as.vector(just_params[j, i]), split = ",")
+      tmp <- unlist(tmp)
+      
+      param_list$beta[iterator] <- tmp[1]
+      param_list$alpha[iterator] <- tmp[2]
+      param_list$c[iterator] <- tmp[3]
+      param_list$sigma_sq[iterator] <- tmp[4]
+      param_list$line_name[iterator] <- names[i]
+      
+    }
+  }
+  
+  param_list <- as.data.frame(param_list)
+  param_list <- droplevels(param_list)
+  
+  # Make a seperate color for every line
+  colors <- brewer.pal(line_number, "Accent")
+  
+  # Check that there is a conditional for every line
+  if(length(conditional_list) != line_number){
+    print("Error: conditional list should match number of seperate parameters")
+    break
+  }else{
+    print("Nice!")
+  }
+  
+for(i in 1:line_number){
+  length <- length(single_disturbence[conditional_list[[i]],]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[conditional_list[[i]],]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+### State based figures
+plot <- single_disturbence[conditional_list[[i]],] %>%
+ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex() + 
+  geom_line(aes(x =seq  , y = (upper )), color = "black")+
+  geom_line(aes(x =seq , y = (lower )), color = "black")
+
+  for(j in 1:length(just_params[,1])) {
+  plot <- plot + geom_line(aes(x = seq, y = ( param_list$alpha[j]*seq^param_list$c[j])/(param_list$beta + seq^param_list$c[j] ), color = colors[i]))
+  }
+  
+  plot <- plot + 
+scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Area ha") +
+  ylab("Interior / Total ratio")+ 
+  ggtitle(names[i])+
+  theme(panel.background = element_blank())
+  
+  print(plot)
+}
+  
+}
+
+
+plot_params(dataframe_from_optim = dataframe_from_optim , conditional_list = conditional_list)
+
+
+```
+
+
+
+
