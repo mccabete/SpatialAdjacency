@@ -733,8 +733,20 @@ state_to_disturbence_output <- state_to_disturbence(initial = initial, method = 
 
 
 ```
+# Exporting sensitivity CSV's 
+```{r}
 
-# Metrics 
+write.csv(state_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/state_to_null_output.csv")
+write.csv(eco_to_state_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/eco_to_state_output.csv")
+
+write.csv(disturbence_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/disturbance_to_null_output.csv")
+write.csv(state_to_disturbence_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/state_to_disturbance_output.csv")
+
+
+
+```
+
+# (In development) Visual Metrics 
 
 ## Plotting parameters for visual comparison 
 
