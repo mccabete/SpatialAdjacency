@@ -21,11 +21,11 @@ library(ggridges)
 
 ```{r, echo= TRUE, message=FALSE, warning=FALSE}
 
-florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_3_2014dm2.csv", header = TRUE)
-florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_5_2014dm2.csv", header = TRUE)
+florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_fixed_8_3_2014dm2.csv", header = TRUE)
+florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_fixed_8_5_2014dm2.csv", header = TRUE)
   
-oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_6_2_2014dm2.csv", header = TRUE)
-oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_7_1_2014dm2.csv", header = TRUE)
+oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_fixed__6_2_2014dm2.csv", header = TRUE)
+oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_fixed__7_1_2014dm2.csv", header = TRUE)
 ```
 
 # Upper + lower interior/ total ratio Helper functions
@@ -399,16 +399,16 @@ MMLnLpower  <- function(beta, ratio, sizw){  ## define likelihood
 ## Null
 null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
 ic=c(1.416, 0.984, 0.444, 0.101)
-all_param <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[null_model_conditional,]$ratio, sizw = single_disturbence[null_model_conditional,]$sizw) 
+all_param <- optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[null_model_conditional,]$ratio, sizw = single_disturbence[null_model_conditional,]$sizw) 
 
 ## Oregon and Florida
 oregon_model_conditional <- null_model_conditional &  single_disturbence$state =="OR"
 ic=c(1.416, 0.984, 0.444, 0.101)
-oregon_param <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[ oregon_model_conditional,]$ratio, sizw = single_disturbence[oregon_model_conditional,]$sizw)
+oregon_param <- optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[ oregon_model_conditional,]$ratio, sizw = single_disturbence[oregon_model_conditional,]$sizw)
 
 ic=c(0.0005,0.5,1,1)
 florida_model_conditional <- null_model_conditional &  single_disturbence$state =="FL"
-florida_param <- optim(ic,MMLnLpower,method="L-BFGS-B",ratio = single_disturbence[florida_model_conditional,]$ratio, sizw = single_disturbence[florida_model_conditional,]$sizw)
+florida_param <- optim(ic,MMLnLpower,method="Nelder-Mead",ratio = single_disturbence[florida_model_conditional,]$ratio, sizw = single_disturbence[florida_model_conditional,]$sizw)
 
 ## Compare? 
 dev.null <- 2*all_param$value         ## null model
@@ -430,13 +430,13 @@ conditional_or_6_2 <- null_model_conditional &  single_disturbence$state =="OR" 
 conditional_or_7_1 <- null_model_conditional &  single_disturbence$state =="OR" & single_disturbence$eco_II == "7.1" 
 
 ic=c(0.0005,0.5,1,1)
-fl_8_3 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_fl_8_3 ,]$ratio, sizw = single_disturbence[conditional_fl_8_3,]$sizw)
+fl_8_3 <- optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[conditional_fl_8_3 ,]$ratio, sizw = single_disturbence[conditional_fl_8_3,]$sizw)
 
-fl_8_5 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_fl_8_5 ,]$ratio, sizw = single_disturbence[conditional_fl_8_5,]$sizw)
+fl_8_5 <- optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[conditional_fl_8_5 ,]$ratio, sizw = single_disturbence[conditional_fl_8_5,]$sizw)
 
-or_6_2 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_or_6_2 ,]$ratio, sizw = single_disturbence[conditional_or_6_2,]$sizw)
+or_6_2 <- optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[conditional_or_6_2 ,]$ratio, sizw = single_disturbence[conditional_or_6_2,]$sizw)
 
-or_7_1 <- optim(ic,MMLnLpower,method="L-BFGS-B", ratio = single_disturbence[conditional_or_7_1 ,]$ratio, sizw = single_disturbence[conditional_or_7_1,]$sizw)
+or_7_1 <- optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[conditional_or_7_1 ,]$ratio, sizw = single_disturbence[conditional_or_7_1,]$sizw)
    
    ## Comparison
     dev.null <- 2*florida_param$value  + 2*oregon_param$value     ## null model
@@ -460,7 +460,7 @@ ic=c(2.5,1,1,1)
 
 run_optim <- function (conditional, disturbences_names){
   conditional <- conditional & single_disturbence$dist_name == disturbences_names
-  PR <-  optim(ic,MMLnLpower,method="SANN", ratio = single_disturbence[conditional,]$ratio, sizw = na.omit(single_disturbence[conditional,]$sizw))
+  PR <-  optim(ic,MMLnLpower,method="Nelder-Mead", ratio = single_disturbence[conditional,]$ratio, sizw = na.omit(single_disturbence[conditional,]$sizw))
   return(PR)
 }
 
@@ -585,11 +585,9 @@ dev.null <- 2*fl_8_3$value + 2*fl_8_5$value + 2*or_6_2$value + 2*or_7_1$value   
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 
-
-## SANN is time intensive
 run_optim <- function (conditional, disturbences_names){
   conditional <- conditional & single_disturbence$dist_name == disturbences_names
-  PR <-  optim(ic,MMLnLpower,method = "L-BFGS-B", ratio = single_disturbence[conditional,]$ratio, sizw = na.omit(single_disturbence[conditional,]$sizw))
+  PR <-  optim(ic,MMLnLpower,method = "Nelder-Mead", ratio = single_disturbence[conditional,]$ratio, sizw = na.omit(single_disturbence[conditional,]$sizw))
   return(PR)
 }
 

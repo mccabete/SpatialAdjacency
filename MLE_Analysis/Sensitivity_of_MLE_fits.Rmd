@@ -21,11 +21,11 @@ library(RColorBrewer)
 
 ```{r, echo= TRUE, message=FALSE, warning=FALSE}
 
-florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_3_2014dm2.csv", header = TRUE)
-florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_8_5_2014dm2.csv", header = TRUE)
+florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_fixed_8_3_2014dm2.csv", header = TRUE)
+florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_fixed_8_5_2014dm2.csv", header = TRUE)
   
-oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_6_2_2014dm2.csv", header = TRUE)
-oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_7_1_2014dm2.csv", header = TRUE)
+oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_fixed__6_2_2014dm2.csv", header = TRUE)
+oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_fixed__7_1_2014dm2.csv", header = TRUE)
 ```
 
 # Upper + lower interior/ total ratio Helper functions
