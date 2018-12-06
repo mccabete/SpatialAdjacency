@@ -179,12 +179,25 @@ no_unknowns_mixed_disturbence <- dplyr::anti_join(mixed_disturbence, unknowns, b
 no_unknowns_single_disturbence <- dplyr::anti_join(single_disturbence, unknowns, by = "dist_name")
 unknown_only <- dplyr::anti_join(unknowns, mixed_disturbence, by = "dist_name")
 
+```
 
-disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") # These are the disturbences that are common between 4 ecoregions
+# Setting up disturbence constants
+
+```{r, echo = TRUE}
+
+dist_8_3 <- unique(single_disturbence[single_disturbence$eco_II == 8.3,]$dist_name)
+dist_8_5 <- unique(single_disturbence[single_disturbence$eco_II == 8.5,]$dist_name)
+dist_7_1 <- unique(single_disturbence[single_disturbence$eco_II == 7.1,]$dist_name)
+dist_6_2 <- unique(single_disturbence[single_disturbence$eco_II == 6.2,]$dist_name)
+
+common_disturbences <- Reduce(intersect, list(dist_8_3,dist_8_5,dist_7_1, dist_6_2))
+common_disturbences <- common_disturbences[common_disturbences != ""]
+
+disturbences_names <-  common_disturbences # These are the disturbences that are common between 4 ecoregions
 
 ## Set up common color schemes 
 
-disturbence_colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6')
+disturbence_colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f')   #,'#ff7f00','#cab2d6')
 eco_region_colors <- c('#df65b0', '#67001f', '#081d58','#7fcdbb') # Oregon then Florida
 
 state_colors <- c('#980043', "#225ea8")
@@ -339,7 +352,7 @@ test <- NA
 test <- state_to_null(initial, method)
 
 state_to_null_output <- test
-#SANN_reuslts <- dataframe_from_optim
+dataframe_from_optim <- state_to_null_output
 #write.csv(dataframe_from_optim, "SANN_results")
 
 ```
@@ -528,9 +541,9 @@ for( n in seq_along(tmt_null)){ ## Compare to different L values from previous f
 
 ## Compare? 
     dev.null <- tmt_null[n]     ## tmt from previous analysis MUCH EASIER IF PASSED
-    dev.tmt  <- 2*mle_output$all_dist[[1]]$value + 2*mle_output$all_dist[[2]]$value + 2*mle_output$all_dist[[3]]$value + 2*mle_output$all_dist[[4]]$value + 2*mle_output$all_dist[[5]]$value + 2*mle_output$all_dist[[6]]$value + 2*mle_output$all_dist[[7]]$value  + 2*mle_output$all_dist[[8]]$value +2* mle_output$all_dist[[9]]$value   ## model with 9*4 parameters, minus 4 parameters is 32
+    dev.tmt  <- 2*mle_output$all_dist[[1]]$value + 2*mle_output$all_dist[[2]]$value + 2*mle_output$all_dist[[3]]$value + 2*mle_output$all_dist[[4]]$value + 2*mle_output$all_dist[[5]]$value + 2*mle_output$all_dist[[6]]$value + 2*mle_output$all_dist[[7]]$value   ## model with 7*4 parameters, minus 4 parameters is 32
     LR       <- dev.null - dev.tmt        ## Likelihood ratio
-    pval     <- 1 - pchisq(LR,34)  ## extreamly large pvalue
+    pval     <- 1 - pchisq(LR,24)  ## extreamly large pvalue
     pval 
     
 ## iterate
@@ -549,14 +562,13 @@ results$tmt_l[iterator] <- dev.tmt
 
 ## Herarchy-level parameters
 results$unknown_param[iterator] <- paste(mle_output$all_dist[[1]]$par, collapse = ',')
-results$other_mechanical_param[iterator] <- paste(mle_output$all_dist[[2]]$par, collapse = ',')
-results$prescribed_fire_param[iterator] <- paste(mle_output$all_dist[[3]]$par, collapse = ',')
-results$wildfire_param[iterator] <- paste(mle_output$all_dist[[4]]$par, collapse = ',')
-results$thinning_param[iterator] <- paste(mle_output$all_dist[[5]]$par, collapse = ',')
-results$herbicide_param[iterator] <- paste(mle_output$all_dist[[7]]$par, collapse = ',')
-results$clearcut_param[iterator] <- paste(mle_output$all_dist[[8]]$par, collapse = ',')
-results$wildland_fire_param[iterator] <- paste(mle_output$all_dist[[9]]$par, collapse = ',')
-results$mastication_param[iterator] <- paste(mle_output$all_dist[[6]]$par, collapse = ',')
+results$other_mechanical_param[iterator] <- paste(mle_output$all_dist[[5]]$par, collapse = ',')
+results$prescribed_fire_param[iterator] <- paste(mle_output$all_dist[[2]]$par, collapse = ',')
+results$wildfire_param[iterator] <- paste(mle_output$all_dist[[7]]$par, collapse = ',')
+results$thinning_param[iterator] <- paste(mle_output$all_dist[[4]]$par, collapse = ',')
+results$herbicide_param[iterator] <- paste(mle_output$all_dist[[6]]$par, collapse = ',')
+results$clearcut_param[iterator] <- paste(mle_output$all_dist[[3]]$par, collapse = ',')
+
 
 ## Check for errors
 results$all_converge[iterator] <- check_if_converge
@@ -571,7 +583,10 @@ results$failed_converge_names[iterator] <- paste(failed_names, collapse = ",")
 return(results)
 }
 
-disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") 
+common_disturbences <- Reduce(intersect, list(dist_8_3,dist_8_5,dist_7_1, dist_6_2))
+common_disturbences <- common_disturbences[common_disturbences != ""]
+
+disturbences_names <-  common_disturbences # These are the disturbences that are common between 4 ecoregions
 tmt_null <- unique(dataframe_from_optim$null_l)
 
 disturbence_to_null_output <- disturbence_to_null(initial = initial, method = method, tmt_null = tmt_null, names = disturbences_names)
@@ -667,12 +682,12 @@ for( n in seq_along(tmt_null)){ ## Compare to different L values from previous f
 
 ## Compare? 
     dev.null <- tmt_null[n]     ## tmt from previous analysis MUCH EASIER IF PASSED
-    dev.tmt  <- 2*mle_output$all_dist_fl[[1]]$value + 2*mle_output$all_dist_fl[[2]]$value + 2*mle_output$all_dist_fl[[3]]$value + 2*mle_output$all_dist_fl[[4]]$value + 2*mle_output$all_dist_fl[[5]]$value +2*mle_output$all_dist_fl[[6]]$value + 2*mle_output$all_dist_fl[[7]]$value + 2*mle_output$all_dist_fl[[8]]$value +  2*mle_output$all_dist_fl[[9]]$value + 
+    dev.tmt  <- 2*mle_output$all_dist_fl[[1]]$value + 2*mle_output$all_dist_fl[[2]]$value + 2*mle_output$all_dist_fl[[3]]$value + 2*mle_output$all_dist_fl[[4]]$value + 2*mle_output$all_dist_fl[[5]]$value +2*mle_output$all_dist_fl[[6]]$value + 2*mle_output$all_dist_fl[[7]]$value  
       
 2*mle_output$all_dist_or[[1]]$value +
-2*mle_output$all_dist_or[[2]]$value + 2*mle_output$all_dist_or[[3]]$value + 2*mle_output$all_dist_or[[4]]$value + 2*mle_output$all_dist_or[[5]]$value + 2*mle_output$all_dist_or[[6]]$value + 2*mle_output$all_dist_or[[7]]$value + 2*mle_output$all_dist_or[[8]]$value +  2*mle_output$all_dist_or[[9]]$value   ## model with 
+2*mle_output$all_dist_or[[2]]$value + 2*mle_output$all_dist_or[[3]]$value + 2*mle_output$all_dist_or[[4]]$value + 2*mle_output$all_dist_or[[5]]$value + 2*mle_output$all_dist_or[[6]]$value + 2*mle_output$all_dist_or[[7]]$value   ## model with 56 params - 24 from null so 
     LR       <- dev.null - dev.tmt        ## Likelihood ratio
-    pval     <- 1 - pchisq(LR,36)  
+    pval     <- 1 - pchisq(LR,32)  
     pval 
     
 ## iterate
@@ -690,27 +705,24 @@ results$null_l[iterator] <- dev.null
 results$tmt_l[iterator] <- dev.tmt
 
 ## Herarchy-level parameters
-# FL
-results$unknown_param_fl[iterator] <- paste(mle_output$all_dist_fl[[1]]$par, collapse = ',')
-results$other_mechanical_param_fl[iterator] <- paste(mle_output$all_dist_fl[[2]]$par, collapse = ',')
-results$prescribed_fire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[3]]$par, collapse = ',')
-results$wildfire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[4]]$par, collapse = ',')
-results$thinning_param_fl[iterator] <- paste(mle_output$all_dist_fl[[5]]$par, collapse = ',')
-results$herbicide_param_fl[iterator] <- paste(mle_output$all_dist_fl[[7]]$par, collapse = ',')
-results$clearcut_param_fl[iterator] <- paste(mle_output$all_dist_fl[[8]]$par, collapse = ',')
-results$wildland_fire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[9]]$par, collapse = ',')
-results$mastication_param_fl[iterator] <- paste(mle_output$all_dist_fl[[6]]$par, collapse = ',')
-
 # OR
 results$unknown_param_or[iterator] <- paste(mle_output$all_dist_or[[1]]$par, collapse = ',')
-results$other_mechanical_param_or[iterator] <- paste(mle_output$all_dist_or[[2]]$par, collapse = ',')
-results$prescribed_fire_param_or[iterator] <- paste(mle_output$all_dist_or[[3]]$par, collapse = ',')
-results$wildfire_param_or[iterator] <- paste(mle_output$all_dist_or[[4]]$par, collapse = ',')
-results$thinning_param_or[iterator] <- paste(mle_output$all_dist_or[[5]]$par, collapse = ',')
-results$herbicide_param_or[iterator] <- paste(mle_output$all_dist_or[[7]]$par, collapse = ',')
-results$clearcut_param_or[iterator] <- paste(mle_output$all_dist_or[[8]]$par, collapse = ',')
-results$wildland_fire_param_or[iterator] <- paste(mle_output$all_dist_or[[9]]$par, collapse = ',')
-results$mastication_param_or[iterator] <- paste(mle_output$all_dist_or[[6]]$par, collapse = ',')
+results$other_mechanical_param_or[iterator] <- paste(mle_output$all_dist_or[[5]]$par, collapse = ',')
+results$prescribed_fire_param_or[iterator] <- paste(mle_output$all_dist_or[[2]]$par, collapse = ',')
+results$wildfire_param_or[iterator] <- paste(mle_output$all_dist_or[[7]]$par, collapse = ',')
+results$thinning_param_or[iterator] <- paste(mle_output$all_dist_or[[4]]$par, collapse = ',')
+results$herbicide_param_or[iterator] <- paste(mle_output$all_dist_or[[6]]$par, collapse = ',')
+results$clearcut_param_or[iterator] <- paste(mle_output$all_dist_or[[3]]$par, collapse = ',')
+
+
+# FL
+results$unknown_param_fl[iterator] <- paste(mle_output$all_dist_fl[[1]]$par, collapse = ',')
+results$other_mechanical_param_fl[iterator] <- paste(mle_output$all_dist_fl[[5]]$par, collapse = ',')
+results$prescribed_fire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[2]]$par, collapse = ',')
+results$wildfire_param_fl[iterator] <- paste(mle_output$all_dist_fl[[7]]$par, collapse = ',')
+results$thinning_param_fl[iterator] <- paste(mle_output$all_dist_fl[[4]]$par, collapse = ',')
+results$herbicide_param_fl[iterator] <- paste(mle_output$all_dist_fl[[6]]$par, collapse = ',')
+results$clearcut_param_fl[iterator] <- paste(mle_output$all_dist_fl[[3]]$par, collapse = ',')
 
 ## Check for errors
 results$all_converge[iterator] <- check_if_converge
@@ -725,7 +737,6 @@ results$failed_converge_names[iterator] <- paste(failed_names, collapse = ",")
 return(results)
 }
 
-disturbences_names <- c("Unknown","Other Mechanical","Prescribed Fire", "Wildfire", "Thinning","Mastication","Herbicide","Clearcut", "Wildland Fire") 
 
 tmt_null <- unique(disturbence_to_null_output$tmt_l)
 
@@ -736,11 +747,11 @@ state_to_disturbence_output <- state_to_disturbence(initial = initial, method = 
 # Exporting sensitivity CSV's 
 ```{r}
 
-write.csv(state_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/state_to_null_output.csv")
-write.csv(eco_to_state_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/eco_to_state_output.csv")
+write.csv(state_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_state_to_null_output.csv")
+write.csv(eco_to_state_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_eco_to_state_output.csv")
 
-write.csv(disturbence_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/disturbance_to_null_output.csv")
-write.csv(state_to_disturbence_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/state_to_disturbance_output.csv")
+write.csv(disturbence_to_null_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_disturbance_to_null_output.csv")
+write.csv(state_to_disturbence_output, "/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_state_to_disturbance_output.csv")
 
 
 
