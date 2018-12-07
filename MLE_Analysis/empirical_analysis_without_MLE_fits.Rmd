@@ -428,16 +428,162 @@ scale_x_log10(
   theme(panel.background = element_blank())
  
 ```
-# Choosing parameter sets
+
+# Choosing parameter sets from sensitivity analysis
 
 ```{r}
 ## Have to formally read in objects from Sensitivity_of_MLE fits files
 
+state_params <- state_to_null_output %>%
+                filter(all_converge == TRUE)  %>%
+                filter(valid_subset == TRUE) 
+state_params <- state_params[state_params$tmt_l == min(state_params$tmt_l),]
+
+florida_param <- strsplit(as.character(state_params$florida_param[1]), split = ",")
+florida_param <- unlist(florida_param)
+
+eco_state_params <- eco_to_state_output %>%
+                filter(all_converge == TRUE)  %>%
+                filter(valid_subset == TRUE) 
+eco_state_params <- eco_state_params[eco_state_params$tmt_l == min(eco_state_params$tmt_l),]
+
+fl_8_3 <- strsplit(as.character(eco_state_params$fl_8_3_param[1]), split = ",")
+fl_8_3  <- unlist(fl_8_3)
+fl_8_3  <- as.numeric(fl_8_3)
+
+fl_8_5 <- strsplit(as.character(eco_state_params$fl_8_5_param[1]), split = ",")
+fl_8_5 <- unlist(fl_8_5)
+fl_8_5 <- as.numeric(fl_8_5)
+or_7_1 <- strsplit(as.character(eco_state_params$or_7_1_param[1]), split = ",")
+or_7_1 <- unlist(or_7_1)
+or_7_1 <- as.numeric(or_7_1)
+
+or_6_2 <- strsplit(as.character(eco_state_params$or_6_2_param[1]), split = ",")
+or_6_2 <- unlist(or_6_2)
+or_6_2 <- as.numeric(or_6_2)
+
+
+if (length(unique(eco_state_params$pval)) > 1 ){ ## Double check that differences in null MLE doesn't affect the pval
+  print("ERROR SIGNIFICANCE AFFECTED BY OPTIM")
+  eco_state_params <- NULL
+}
+
+disturbence_params <- disturbence_to_null_output  %>%
+                filter(all_converge == TRUE)  %>%
+                filter(valid_subset == TRUE) %>%
+                filter(method == "L-BFGS-B")
+disturbence_params <- disturbence_params[disturbence_params$tmt_l == min(disturbence_params$tmt_l),]
+
+if (length(unique(disturbence_params$pval)) > 1 ){ ## Double check that differences in null MLE doesn't affect the pval
+  print("ERROR SIGNIFICANCE AFFECTED BY OPTIM")
+  disturbence_params<- NULL
+}
+
+col_list <- grep("param", names(disturbence_params))
+all_dist <- list()
+for( i in 1:length(grep("param", names(disturbence_params)))){
+  col <- disturbence_params[, col_list[i]]
+  tmp <- strsplit(as.character(col[1]), split = ",")
+  tmp <- unlist(tmp)
+  tmp <- as.numeric(tmp)
+  all_dist[[i]] <- tmp
+}
+#state_to_disturbence_params <- state_to_disturbence_output %>%
+#                            filter(all_converge == TRUE)  %>%
+#                            filter(valid_subset == TRUE) 
+#state_to_disturbence_params <- state_to_disturbence_params[state_to_disturbence_params$tmt_1 == min(state_to_disturbence_params$tmt_1),] ## Not Significant
 
 
 
 ```
 
+## Ploting curves of interior/total ratio
+
+# Ecoregion within state
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+length <- length(single_disturbence[null_model_conditional & single_disturbence$state == "FL",]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+### State based figures
+#final %>% 
+  #filter(state == "FL") %>%
+florida_plot <- single_disturbence[null_model_conditional & single_disturbence$state == "FL",] %>%
+ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex() + 
+  geom_line(aes(x =seq  , y = (upper )), color = "black")+
+  geom_line(aes(x =seq , y = (lower )), color = "black") +
+  geom_line(aes(x = seq, y = ( fl_8_3[2]*seq^fl_8_3[3])/(fl_8_3[1] + seq^fl_8_3[3]) ), color = eco_region_colors[4])+ #plotting fl_8_3
+  geom_line(aes(x = seq, y = (fl_8_5[2]*seq^fl_8_5[3])/(fl_8_5[1] + seq^fl_8_5[3]) ), color = eco_region_colors[3])+ #plotting fl_8_5
+  scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Area ha") +
+  ylab("Interior / Total ratio")+ 
+  ggtitle("Florida")+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),        legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+ggsave(florida_plot, filename = "florida_plot.png", bg ="transparent")
+
+
+length <- length(single_disturbence[null_model_conditional & single_disturbence$state == "OR",]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+## State-based figures
+#final %>% 
+  #filter(state == "FL") %>%
+oregon_plot <- single_disturbence[null_model_conditional & single_disturbence$state == "OR",] %>%
+ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex() + 
+  geom_line(aes(x =seq  , y = (upper )), color = "black")+
+  geom_line(aes(x =seq , y = (lower )), color = "black")+
+  geom_line(aes(x = seq, y = ( or_6_2[2]*seq^or_6_2[3])/(or_6_2[1] + seq^or_6_2[3]) ), color = eco_region_colors[1])+ # 6.2
+  geom_line(aes(x = seq, y = (or_7_1[2]*seq^or_7_1[3])/(or_7_1[1] + seq^or_7_1[3]) ), color = eco_region_colors[2])+ # 7.1
+   scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Area ha") +
+  ylab("Interior / Total ratio")+ 
+  ggtitle("Oregon")+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),        legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+ggsave(oregon_plot, filename = "oregon_plot.png", bg ="transparent")
+```
 
 
 # Disturbence curves
@@ -451,20 +597,23 @@ seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
 lower <- lower_bound_ratios(seq)
 upper <- upper_bound_ratios(seq)
 
- single_disturbence[null_model_conditional, ] %>%
+
+disturbence_plot <- single_disturbence[null_model_conditional, ] %>%
 ggplot(aes(sizw, ratio), show.legend = TRUE) +
   geom_hex(aes(sizw, ratio)) + 
   geom_line(aes(x =seq   , y = (upper )), color = "black")+
   geom_line(aes(x =seq  , y = (lower )), color = "black")+
-  geom_line(aes(x =seq, (mle_output$all_dist[[1]]$par[2]*seq^mle_output$all_dist[[1]]$par[3])/(mle_output$all_dist[[1]]$par[1] + seq^mle_output$all_dist[[1]]$par[3])), color = disturbence_colors[7])+ #5
-   geom_line(aes(x =seq, (mle_output$all_dist[[2]]$par[2]*seq^mle_output$all_dist[[2]]$par[3])/(mle_output$all_dist[[2]]$par[1] + seq^mle_output$all_dist[[2]]$par[3])), color = disturbence_colors[5])+
-   geom_line(aes(x =seq, (mle_output$all_dist[[3]]$par[2]*seq^mle_output$all_dist[[3]]$par[3])/(mle_output$all_dist[[3]]$par[1] + seq^mle_output$all_dist[[3]]$par[3]) ), color = disturbence_colors[4] )+
-   geom_line(aes(x =seq, (mle_output$all_dist[[4]]$par[2]*seq^mle_output$all_dist[[4]]$par[3])/(mle_output$all_dist[[4]]$par[1] + seq^mle_output$all_dist[[4]]$par[3])), color = disturbence_colors[8])+
-     geom_line(aes(x =seq, (mle_output$all_dist[[5]]$par[2]*seq^mle_output$all_dist[[5]]$par[3])/(mle_output$all_dist[[6]]$par[1] + seq^mle_output$all_dist[[5]]$par[3])), color = disturbence_colors[6])+
-    geom_line(aes(x =seq, (mle_output$all_dist[[6]]$par[2]*seq^mle_output$all_dist[[6]]$par[3])/(mle_output$all_dist[[6]]$par[1] + seq^mle_output$all_dist[[6]]$par[3])), color = disturbence_colors[3])+
-     geom_line(aes(x =seq, (mle_output$all_dist[[7]]$par[2]*seq^mle_output$all_dist[[7]]$par[3])/(mle_output$all_dist[[7]]$par[1] + seq^mle_output$all_dist[[7]]$par[3])), color = disturbence_colors[2])+
-     geom_line(aes(x =seq, (mle_output$all_dist[[8]]$par[2]*seq^mle_output$all_dist[[8]]$par[3])/(mle_output$all_dist[[8]]$par[1] + seq^mle_output$all_dist[[8]]$par[3])),color = disturbence_colors[1] )+
-    geom_line(aes(x =seq, (mle_output$all_dist[[9]]$par[2]*seq^mle_output$all_dist[[9]]$par[3])/(mle_output$all_dist[[9]]$par[1] + seq^mle_output$all_dist[[9]]$par[3])), color = disturbence_colors[9])+
+
+
+## Plot disturbence lines
+ geom_line(aes(x =seq, (all_dist[[1]][2]*seq^all_dist[[1]][3])/(all_dist[[1]][1] + seq^all_dist[[1]][3])), color = disturbence_colors[7])+ #5
+   geom_line(aes(x =seq, (all_dist[[2]][2]*seq^all_dist[[2]][3])/(all_dist[[2]][1] + seq^all_dist[[2]][3])), color = disturbence_colors[5])+
+   geom_line(aes(x =seq, (all_dist[[3]][2]*seq^all_dist[[3]][3])/(all_dist[[3]][1] + seq^all_dist[[3]][3]) ), color = disturbence_colors[4] )+
+   geom_line(aes(x =seq, (all_dist[[4]][2]*seq^all_dist[[4]][3])/(all_dist[[4]][1] + seq^all_dist[[4]][3])), color = disturbence_colors[8])+
+    geom_line(aes(x =seq, (all_dist[[5]][2]*seq^all_dist[[5]][3])/(all_dist[[6]][1] + seq^all_dist[[5]][3])), color = disturbence_colors[6])+
+   geom_line(aes(x =seq, (all_dist[[6]][2]*seq^all_dist[[6]][3])/(all_dist[[6]][1] + seq^all_dist[[6]][3])), color = disturbence_colors[3])+
+     geom_line(aes(x =seq, (all_dist[[7]][2]*seq^all_dist[[7]][3])/(all_dist[[7]][1] + seq^all_dist[[7]][3])), color = disturbence_colors[2])+
+  
 scale_x_continuous(trans="log") +
 scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
    theme(panel.background = element_blank(),
@@ -485,102 +634,14 @@ scale_x_log10(
   xlab("Area ha") +
   ylab("Interior / Total Ratio ")+ 
   ggtitle("All Disturbances")+
-  theme(panel.background = element_blank())
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+ggsave(disturbence_plot, filename = "disturbence_plot.png", bg ="transparent")
 ```
 
 
-# State Within Disturbence
-
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-
- ### Disturbance by state FL
-length <- length(single_disturbence[null_model_conditional & single_disturbence$state == "FL",]$sizw)
-length <- length + 1
-seq <- c(2:length)
-seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
-lower <- lower_bound_ratios(seq)
-upper <- upper_bound_ratios(seq)
- single_disturbence[null_model_conditional & single_disturbence$state == "FL", ] %>%
-ggplot(aes(sizw, ratio), show.legend = FALSE) +
-  geom_hex() + 
-  geom_line(aes(x =seq   , y = (upper )), color = "black")+
-  geom_line(aes(x =seq  , y = (lower )), color = "black")+
-  geom_line(aes(x =seq, (mle_output$all_dist_fl[[1]]$par[2]*seq^mle_output$all_dist_fl[[1]]$par[3])/(mle_output$all_dist_fl[[1]]$par[1] + seq^mle_output$all_dist_fl[[1]]$par[3]) ), color = disturbence_colors[7])+ #5
-   geom_line(aes(x =seq, (mle_output$all_dist_fl[[2]]$par[2]*seq^mle_output$all_dist_fl[[2]]$par[3])/(mle_output$all_dist_fl[[2]]$par[1] + seq^mle_output$all_dist_fl[[2]]$par[3]) ), color = disturbence_colors[5])+
-   geom_line(aes(x =seq, (mle_output$all_dist_fl[[3]]$par[2]*seq^mle_output$all_dist_fl[[3]]$par[3])/(mle_output$all_dist_fl[[3]]$par[1] + seq^mle_output$all_dist_fl[[3]]$par[3]) ), color = disturbence_colors[4] )+
-   geom_line(aes(x =seq, (mle_output$all_dist_fl[[4]]$par[2]*seq^mle_output$all_dist_fl[[4]]$par[3])/(mle_output$all_dist_fl[[4]]$par[1] + seq^mle_output$all_dist_fl[[4]]$par[3]) ), color = disturbence_colors[8])+
-     geom_line(aes(x =seq, (mle_output$all_dist_fl[[5]]$par[2]*seq^mle_output$all_dist_fl[[5]]$par[3])/(mle_output$all_dist_fl[[6]]$par[1] + seq^mle_output$all_dist_fl[[5]]$par[3])  ), color = disturbence_colors[6])+
-    geom_line(aes(x =seq, (mle_output$all_dist_fl[[6]]$par[2]*seq^mle_output$all_dist_fl[[6]]$par[3])/(mle_output$all_dist_fl[[6]]$par[1] + seq^mle_output$all_dist_fl[[6]]$par[3])), color = disturbence_colors[3])+
-     geom_line(aes(x =seq, (mle_output$all_dist_fl[[7]]$par[2]*seq^mle_output$all_dist_fl[[7]]$par[3])/(mle_output$all_dist_fl[[7]]$par[1] + seq^mle_output$all_dist_fl[[7]]$par[3])  ), color = disturbence_colors[2])+
-     geom_line(aes(x =seq, (mle_output$all_dist_fl[[8]]$par[2]*seq^mle_output$all_dist_fl[[8]]$par[3])/(mle_output$all_dist_fl[[8]]$par[1] + seq^mle_output$all_dist_fl[[8]]$par[3]) ),color = disturbence_colors[1] )+
-    geom_line(aes(x =seq, (mle_output$all_dist_fl[[9]]$par[2]*seq^mle_output$all_dist_fl[[9]]$par[3])/(mle_output$all_dist_fl[[9]]$par[1] + seq^mle_output$all_dist_fl[[9]]$par[3])    ), color = disturbence_colors[9])+
-scale_x_continuous(trans="log") +
-scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
-   theme(panel.background = element_blank(),
-      #axis.text.y = element_blank(),
-      #axis.title.y = element_blank(),
-      #axis.ticks.y = element_blank(),
-      axis.text.x = element_text(size=14),
-      axis.text.y = element_text(size=14), 
-      legend.position= "none"
-      ) + 
-scale_x_log10(
-   breaks = scales::trans_breaks("log10", function(x) 10^x),
-   labels = scales::trans_format("log10", scales::math_format(10^.x))
- )+ 
-  xlab("Disturbance Event Size (ha)") + 
-  scale_color_manual(values= disturbence_colors)+
-  xlab("Area ha") +
-  ylab("Interior / Total Ratio ")+ 
-  ggtitle("Florida")+
-  theme(panel.background = element_blank())
-  
- 
- ### Disturbance by state OR
- length <- length(single_disturbence[null_model_conditional & single_disturbence$state == "OR",]$sizw)
-length <- length + 1
-seq <- c(2:length)
-seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
-lower <- lower_bound_ratios(seq)
-upper <- upper_bound_ratios(seq)
- 
- 
-  single_disturbence[null_model_conditional & single_disturbence$state == "OR", ] %>%
-ggplot(aes(sizw, ratio), show.legend = TRUE) +
-  geom_hex() + 
-  geom_line(aes(x =seq   , y = (upper )), color = "black")+
-  geom_line(aes(x =seq  , y = (lower )), color = "black")+
-  geom_line(aes(x =seq, (mle_output$all_dist_or[[1]]$par[2]*seq^mle_output$all_dist_or[[1]]$par[3])/(mle_output$all_dist_or[[1]]$par[1] + seq^mle_output$all_dist_or[[1]]$par[3])   ), color = disturbence_colors[7])+ #5
-   geom_line(aes(x =seq, (mle_output$all_dist_or[[2]]$par[2]*seq^mle_output$all_dist_or[[2]]$par[3])/(mle_output$all_dist_or[[2]]$par[1] + seq^mle_output$all_dist_or[[2]]$par[3])   ), color = disturbence_colors[5])+
-   geom_line(aes(x =seq, (mle_output$all_dist_or[[3]]$par[2]*seq^mle_output$all_dist_or[[3]]$par[3])/(mle_output$all_dist_or[[3]]$par[1] + seq^mle_output$all_dist_or[[3]]$par[3])  ), color = disturbence_colors[4] )+
-   geom_line(aes(x =seq, (mle_output$all_dist_or[[4]]$par[2]*seq^mle_output$all_dist_or[[4]]$par[3])/(mle_output$all_dist_or[[4]]$par[1] + seq^mle_output$all_dist_or[[4]]$par[3])  ), color = disturbence_colors[8])+
-     geom_line(aes(x =seq, (mle_output$all_dist_or[[5]]$par[2]*seq^mle_output$all_dist_or[[5]]$par[3])/(mle_output$all_dist_or[[6]]$par[1] + seq^mle_output$all_dist_or[[5]]$par[3])    ), color = disturbence_colors[6])+
-    geom_line(aes(x =seq, (mle_output$all_dist_or[[6]]$par[2]*seq^mle_output$all_dist_or[[6]]$par[3])/(mle_output$all_dist_or[[6]]$par[1] + seq^mle_output$all_dist_or[[6]]$par[3])  ), color = disturbence_colors[3])+
-     geom_line(aes(x =seq, (mle_output$all_dist_or[[7]]$par[2]*seq^mle_output$all_dist_or[[7]]$par[3])/(mle_output$all_dist_or[[7]]$par[1] + seq^mle_output$all_dist_or[[7]]$par[3])   ), color = disturbence_colors[2])+
-     geom_line(aes(x =seq, (mle_output$all_dist_or[[8]]$par[2]*seq^mle_output$all_dist_or[[8]]$par[3])/(mle_output$all_dist_or[[8]]$par[1] + seq^mle_output$all_dist_or[[8]]$par[3])   ),color = disturbence_colors[1] )+
-    geom_line(aes(x =seq, (mle_output$all_dist_or[[9]]$par[2]*seq^mle_output$all_dist_or[[9]]$par[3])/(mle_output$all_dist_or[[9]]$par[1] + seq^mle_output$all_dist_or[[9]]$par[3])    ), color = disturbence_colors[9])+
-scale_x_continuous(trans="log") +
-scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
-   theme(panel.background = element_blank(),
-      #axis.text.y = element_blank(),
-      #axis.title.y = element_blank(),
-      #axis.ticks.y = element_blank(),
-      axis.text.x = element_text(size=14),
-      axis.text.y = element_text(size=14), 
-      #legend.position= "none"
-      ) + 
-scale_x_log10(
-   breaks = scales::trans_breaks("log10", function(x) 10^x),
-   labels = scales::trans_format("log10", scales::math_format(10^.x))
- )+ 
-  xlab("Disturbance Event Size (ha)") + 
-  scale_color_manual(values= disturbence_colors)+
-  xlab("Area ha") +
-  ylab("Interior / Total Ratio ")+ 
-  ggtitle("Oregon")+
-  theme(panel.background = element_blank())
-  
-```
 
 
 
