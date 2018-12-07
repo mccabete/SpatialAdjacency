@@ -428,6 +428,16 @@ scale_x_log10(
   theme(panel.background = element_blank())
  
 ```
+# Choosing parameter sets
+
+```{r}
+## Have to formally read in objects from Sensitivity_of_MLE fits files
+
+
+
+
+```
+
 
 
 # Disturbence curves
