@@ -244,10 +244,11 @@ library(dplyr)
 library(ggplot2)
 
 ## Ecoregion in ggridges
-  na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+density_ecoregions <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
 ggplot( aes(x = size_ha, y = eco_II, fill = eco_II)) + scale_x_continuous(trans="log")+ geom_density_ridges() +
   geom_vline(xintercept = 0.09)+
 theme(panel.background = element_blank(), 
+      plot.background = element_rect(fill = "transparent", color = NA),
       axis.text.y = element_blank(), 
       axis.title.y = element_blank(), 
       axis.ticks.y = element_blank(),
@@ -262,13 +263,20 @@ scale_x_log10(
     #ggtitle("Ecoregion")+
   scale_fill_manual(values= eco_region_colors)  
   
+
+# 800 461
+density_ecoregions
+ggsave(density_ecoregions, filename = "density_ecoregions.png", bg="transparent", width = 800, height = 461, units = "mm")
+
+
 ### Disturbence Density Plots 
-na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+density_disturbence <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
 ggplot( aes(x = size_ha, y = dist_name, fill = dist_name)) + scale_x_continuous(trans="log", limits = 0.09)+ geom_density_ridges() +
   geom_vline(xintercept = 0.09)+
-theme(panel.background = element_blank(),
-      axis.text.y = element_blank(),
-      axis.title.y = element_blank(),
+theme(panel.background = element_blank(), 
+      plot.background = element_rect(fill = "transparent", color = NA),
+      axis.text.y = element_blank(), 
+      axis.title.y = element_blank(), 
       axis.ticks.y = element_blank(),
       axis.text.x = element_text(size=14),
       legend.position = "none"
@@ -279,7 +287,10 @@ scale_x_log10(
  )+ 
   xlab("Disturbance Event Size ha") + 
   #ggtitle("Size Distributions")+
-  scale_fill_manual(values= disturbence_colors)  
+  scale_fill_manual(values= disturbence_colors)
+
+density_disturbence
+ ggsave(density_disturbence, filename = "density_disturbence.png", bg="transparent")
 
 ```
 
@@ -401,7 +412,7 @@ upper <- upper_bound_ratios(seq)
  
 ### Disturbances hex only
 
- single_disturbence[null_model_conditional, ] %>%
+disturbences_abundence <- single_disturbence[null_model_conditional, ] %>%
 ggplot(aes(sizw, ratio, color = dist_name), show.legend = FALSE) +
   geom_hex() + 
   geom_line(aes(x =seq   , y = (upper )), color = "black")+
@@ -425,7 +436,11 @@ scale_x_log10(
   xlab("Area ha") +
   ylab("Interior / Total Ratio ")+ 
   ggtitle("Disturbance Types")+
-  theme(panel.background = element_blank())
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+ ggsave(disturbences_abundence, filename = "disturbences_abundence.png", bg="transparent")
+ 
  
 ```
 
@@ -606,13 +621,13 @@ ggplot(aes(sizw, ratio), show.legend = TRUE) +
 
 
 ## Plot disturbence lines
- geom_line(aes(x =seq, (all_dist[[1]][2]*seq^all_dist[[1]][3])/(all_dist[[1]][1] + seq^all_dist[[1]][3])), color = disturbence_colors[7])+ #5
-   geom_line(aes(x =seq, (all_dist[[2]][2]*seq^all_dist[[2]][3])/(all_dist[[2]][1] + seq^all_dist[[2]][3])), color = disturbence_colors[5])+
-   geom_line(aes(x =seq, (all_dist[[3]][2]*seq^all_dist[[3]][3])/(all_dist[[3]][1] + seq^all_dist[[3]][3]) ), color = disturbence_colors[4] )+
-   geom_line(aes(x =seq, (all_dist[[4]][2]*seq^all_dist[[4]][3])/(all_dist[[4]][1] + seq^all_dist[[4]][3])), color = disturbence_colors[8])+
-    geom_line(aes(x =seq, (all_dist[[5]][2]*seq^all_dist[[5]][3])/(all_dist[[6]][1] + seq^all_dist[[5]][3])), color = disturbence_colors[6])+
-   geom_line(aes(x =seq, (all_dist[[6]][2]*seq^all_dist[[6]][3])/(all_dist[[6]][1] + seq^all_dist[[6]][3])), color = disturbence_colors[3])+
-     geom_line(aes(x =seq, (all_dist[[7]][2]*seq^all_dist[[7]][3])/(all_dist[[7]][1] + seq^all_dist[[7]][3])), color = disturbence_colors[2])+
+ geom_line(aes(x =seq, (all_dist[[1]][2]*seq^all_dist[[1]][3])/(all_dist[[1]][1] + seq^all_dist[[1]][3])), color = disturbence_colors[6])+ #5
+   geom_line(aes(x =seq, (all_dist[[2]][2]*seq^all_dist[[2]][3])/(all_dist[[2]][1] + seq^all_dist[[2]][3])), color = disturbence_colors[4])+
+   geom_line(aes(x =seq, (all_dist[[3]][2]*seq^all_dist[[3]][3])/(all_dist[[3]][1] + seq^all_dist[[3]][3]) ), color = disturbence_colors[1] )+
+   geom_line(aes(x =seq, (all_dist[[4]][2]*seq^all_dist[[4]][3])/(all_dist[[4]][1] + seq^all_dist[[4]][3])), color = disturbence_colors[5])+
+    geom_line(aes(x =seq, (all_dist[[5]][2]*seq^all_dist[[5]][3])/(all_dist[[6]][1] + seq^all_dist[[5]][3])), color = disturbence_colors[3])+
+   geom_line(aes(x =seq, (all_dist[[6]][2]*seq^all_dist[[6]][3])/(all_dist[[6]][1] + seq^all_dist[[6]][3])), color = disturbence_colors[2])+
+     geom_line(aes(x =seq, (all_dist[[7]][2]*seq^all_dist[[7]][3])/(all_dist[[7]][1] + seq^all_dist[[7]][3])), color = disturbence_colors[7])+
   
 scale_x_continuous(trans="log") +
 scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
