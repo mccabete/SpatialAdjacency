@@ -133,6 +133,8 @@ lower_bound_ratios <- function(x){
 
 The base raster adjacency function that we used when calculating interior/total ratios made a wrap-around adjacency assumption, inflating the adjacency of corner and edge pixels. We corrected for it by setting ratios above the maximum to NA. 
 
+In addition, the LANDFIRE dataset had two seperate catagories for "Unknown". They are: "Unknown/Fire Doubtful" - a catagory that replaced the initial 2000 "Unknown" catagory, and "Unknown/Possibly Fire". For our analysis, both catagories were considered "Unknown". 
+
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 oregon_6_2$eco_II <- "6.2"  ## Put in Ecoregion labels 
 oregon_7_1$eco_II <- "7.1"
@@ -158,6 +160,24 @@ final$ratio[(final$ratio > 0.55333333) & (final$sizw == 6)] <- NA
 final$ratio[(final$ratio > 0.5714286) & (final$sizw == 7)] <- NA
 final$ratio[(final$ratio >  0.7083333) & (final$sizw == 12)] <- NA
 final$ratio[(final$ratio >  0.7631579) & (final$sizw == 19)] <- NA
+
+## 2014 specific ID's
+final[final$ids == 212, ]$dist_name <- "Wildfire"
+  final[final$ids == 231, ]$dist_name <- "Wildfire"
+  
+## Check that all remaining unnamed ID's are in 1100's range  
+ids_of_unnamed <- unique(final[final$dist_name == "",]$ids)
+tmp <- strsplit(as.character(ids_of_unnamed), split="\\s+")
+tmp <- unlist(tmp)
+tmp <- as.numeric(tmp)
+all_unknowns <- all(tmp > 1100)
+
+if (all_unknowns){
+  final[final$dist_name == "",]$dist_name <- "Unknown"
+}else{
+  print("NOT ALL UNKNOWNS, RECHECK PARSING")
+}
+
 
 ```
 
@@ -235,7 +255,69 @@ for(i in seq_along(disturbences_names)){
 
 
 ```
+# Decriptive Statistics for Mixed disturbences
 
+```{r}
+## A co-occurence matrix of Disturbences in mixed disturbneces
+names_of_mixed <- mixed_disturbence$dist_name
+tmp_names <- strsplit(as.character(names_of_mixed), split = ", ")
+mixed_names <- unlist(tmp_names)
+
+heatmap <- matrix(nrow = 14, ncol = 14)
+heatmap[is.na(heatmap)] <- 0
+heatmap <- as.data.frame(heatmap)
+colnames(heatmap) <- unique(mixed_names)
+rownames(heatmap) <- unique(mixed_names)
+
+for (i in 1:length(tmp_names)){
+  length <- length(tmp_names[[i]])
+  for (j in 1: length){
+    dist_y <- tmp_names[[i]][j]
+    for(k in 1:length){
+      dist_x <- tmp_names[[i]][k]
+      heatmap[dist_y, dist_x] <- heatmap[dist_y, dist_x] +1
+    }
+    
+  }
+  
+}
+
+heatmap <- as.matrix(heatmap)
+ get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat)
+ }
+ heatmap <- get_lower_tri(heatmap)
+ 
+
+
+library(reshape2)
+melted <- melt(heatmap)
+melted
+
+ggheatmap <- ggplot(melted, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "white", high = "blue",
+    space = "Lab", 
+    name="Co-ocurence") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1), axis.text.y = element_text( size = 12))+
+ coord_fixed()+ 
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 3) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(1.35, 0.2),
+  legend.direction = "vertical")+
+  guides(fill = guide_colorbar(barwidth = 1, barheight = 7,
+                title.position = "top", title.hjust = 0.5))
+```
 
 # Density Figures
 
@@ -244,8 +326,11 @@ library(dplyr)
 library(ggplot2)
 
 ## Ecoregion in ggridges
-density_ecoregions <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
-ggplot( aes(x = size_ha, y = eco_II, fill = eco_II)) + scale_x_continuous(trans="log")+ geom_density_ridges() +
+#density_ecoregions <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+
+density_ecoregions <- single_disturbence %>%
+#density_ecoregions <- final %>%
+ggplot(aes(x = size_ha, y = eco_II, fill = eco_II)) + scale_x_continuous(trans="log")+ geom_density_ridges() +
   geom_vline(xintercept = 0.09)+
 theme(panel.background = element_blank(), 
       plot.background = element_rect(fill = "transparent", color = NA),
@@ -262,7 +347,7 @@ scale_x_log10(
   xlab("Disturbance Event Size ha") + 
     #ggtitle("Ecoregion")+
   scale_fill_manual(values= eco_region_colors)  
-  
+  density_ecoregions
 
 # 800 461
 density_ecoregions
@@ -270,7 +355,9 @@ ggsave(density_ecoregions, filename = "density_ecoregions.png", bg="transparent"
 
 
 ### Disturbence Density Plots 
-density_disturbence <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+#density_disturbence <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+density_disturbence <- single_disturbence %>%
+#density_disturbence <- final %>%
 ggplot( aes(x = size_ha, y = dist_name, fill = dist_name)) + scale_x_continuous(trans="log", limits = 0.09)+ geom_density_ridges() +
   geom_vline(xintercept = 0.09)+
 theme(panel.background = element_blank(), 
@@ -285,9 +372,9 @@ scale_x_log10(
    breaks = scales::trans_breaks("log10", function(x) 10^x),
    labels = scales::trans_format("log10", scales::math_format(10^.x))
  )+ 
-  xlab("Disturbance Event Size ha") + 
+  xlab("Disturbance Event Size ha") 
   #ggtitle("Size Distributions")+
-  scale_fill_manual(values= disturbence_colors)
+  #scale_fill_manual(values= disturbence_colors)
 
 density_disturbence
  ggsave(density_disturbence, filename = "density_disturbence.png", bg="transparent")
@@ -297,8 +384,9 @@ density_disturbence
 
 # KS tests for Supplemental Table 2
 
-The Kolmogorov–Smirnov test we ran included single pixel, double pixel, and triple pixels unlike the Maximum Likelihood tests, where those were excluded (See below). 
+The Kolmogorov–Smirnov test we ran included single pixel, double pixel, and triple pixels unlike the Maximum Likelihood tests, where single, double and triple pixel -sized disturbences were excluded (See below). 
 
+Initialy, we just ran KS tests on disturbence size distributions that were also included in the size distribution by interior-totel ratio curve fits and likelyhood-ratio test comparison. Because the liklyhood ratio test requires strict subsetting, we eliminated all disturbences that weren't present in all four ecoregions. KS tests don't have the same requirements, so here we explore the wider range of size distributions present in the dataset. 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 
 ### Making Disturbence-level objects
@@ -401,6 +489,7 @@ KS_results[,c(1:2, 4)] %>%
 This figure didn't make it into the paper, but is another _non MLE_ visualization tool. 
 
 ```{r}
+
 ## Making the upper and lower bounds
 length <- length(single_disturbence[null_model_conditional,]$sizw)
 length <- length + 1
@@ -418,7 +507,7 @@ ggplot(aes(sizw, ratio, color = dist_name), show.legend = FALSE) +
   geom_line(aes(x =seq   , y = (upper )), color = "black")+
   geom_line(aes(x =seq  , y = (lower )), color = "black")+
 scale_x_continuous(trans="log") +
-scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#636363", high = "#bdbdbd") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#bdbdbd", high = "#636363") +
    theme(panel.background = element_blank(),
       #axis.text.y = element_blank(),
       #axis.title.y = element_blank(),
@@ -432,16 +521,18 @@ scale_x_log10(
    labels = scales::trans_format("log10", scales::math_format(10^.x))
  )+ 
   xlab("All Disturbances") + 
-  scale_color_manual(values= disturbence_colors)+
+  #scale_color_manual(values= disturbence_colors)+
   xlab("Area ha") +
   ylab("Interior / Total Ratio ")+ 
   ggtitle("Disturbance Types")+
   theme(panel.background = element_rect(fill = "transparent") # bg of the panel
     , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
     , legend.box.background = element_rect(fill = "transparent"))
- ggsave(disturbences_abundence, filename = "disturbences_abundence.png", bg="transparent")
+disturbences_abundence
+
+# ggsave(disturbences_abundence, filename = #"disturbences_abundence.png", bg="transparent")
  
- 
+
 ```
 
 # Choosing parameter sets from sensitivity analysis
