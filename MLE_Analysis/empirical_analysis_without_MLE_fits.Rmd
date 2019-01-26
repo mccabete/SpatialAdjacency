@@ -162,7 +162,7 @@ final$ratio[(final$ratio >  0.7083333) & (final$sizw == 12)] <- NA
 final$ratio[(final$ratio >  0.7631579) & (final$sizw == 19)] <- NA
 
 ## 2014 specific ID's
-final[final$ids == 212, ]$dist_name <- "Wildfire"
+#final[final$ids == 212, ]$dist_name <- "Wildfire"
   final[final$ids == 231, ]$dist_name <- "Wildfire"
   
 ## Check that all remaining unnamed ID's are in 1100's range  
@@ -411,7 +411,7 @@ Initialy, we just ran KS tests on disturbence size distributions that were also 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 
 ### Making Disturbence-level objects
-#fire_only <- single_disturbence[grep("ire", single_disturbence$dist_name),]
+fire_only <- single_disturbence[grep("ire", single_disturbence$dist_name),]
 wildland <- fire_only[grep("Wildland", fire_only$dist_name),]
 wildfire <- fire_only[grep("Wildfire", fire_only$dist_name),]
 Prescribed <- fire_only[grep("Prescribed Fire", fire_only$dist_name),]
@@ -465,17 +465,13 @@ for (i in 1:(length(names(dist_size))^2)){
   KS_results$sig[i] <- FALSE
   KS_results$D[i] <- size_dist_resulsts[[i]]$statistic
  
-  ## Build factorial function for the calculation of p.val
-  fact <- function (num){
-    temp = num
-    for(i in 1:num){
-      temp <- temp + num - i
-    }
-    result <- temp
+  ## Build # of pairwise comparisons function for the calculation of p.val
+  pairs <- function (num){
+    result <- (num*(num-1))/2
     return(result)
   }
   
-  Bonf_val <- 0.05/ (fact(length(all_disturbences)) + 3) # Plus 3 for states and ecoregions
+  Bonf_val <- 0.05/ (pairs(length(all_disturbences)) + 3) # Plus 3 for states and ecoregions
   
   if(size_dist_resulsts[[i]]$p.value < Bonf_val) { 
    sig[i] <- paste(size_dist_resulsts[[i]]$names)
@@ -531,28 +527,29 @@ This figure didn't make it into the paper, but is another _non MLE_ visualizatio
 ```{r}
 
 ## Making the upper and lower bounds
-length <- length(single_disturbence[null_model_conditional,]$sizw)
+length <- length(single_disturbence[hex_conditional,]$sizw)
 length <- length + 1
 seq <- c(2:length)
-seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
+seq[length(seq)] <- max(single_disturbence[hex_conditional,]$sizw)
 lower <- lower_bound_ratios(seq)
 upper <- upper_bound_ratios(seq)
 
- 
-### Disturbances hex only
-hex_conditional <- single_disturbence$sizw > 3 & single_disturbence$dist_name %in%
+other_dists <- all_disturbences[!all_disturbences %in% disturbences_names]
 
-disturbences_abundence <- single_disturbence[null_model_conditional, ] %>%
-ggplot(aes(sizw, ratio, color = dist_name), show.legend = FALSE) +
-  geom_hex() + 
+### Disturbances hex only
+hex_conditional <- single_disturbence$sizw > 3 & single_disturbence$dist_name %in% other_dists
+
+disturbences_abundence <- single_disturbence[hex_conditional, ] %>%
+ggplot( show.legend = FALSE) +
+  geom_hex(aes(sizw, ratio, color = dist_name)) + 
   geom_line(aes(x =seq   , y = (upper )), color = "black")+
   geom_line(aes(x =seq  , y = (lower )), color = "black")+
 scale_x_continuous(trans="log") +
-scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  low = "#bdbdbd", high = "#636363") +
+scale_fill_gradient(trans = "log",   low = "#bdbdbd", high = "#636363") +
    theme(panel.background = element_blank(),
       #axis.text.y = element_blank(),
-      #axis.title.y = element_blank(),
-      #axis.ticks.y = element_blank(),
+      axis.title.y = element_blank(),
+      axis.ticks.y = element_blank(),
       axis.text.x = element_text(size=14),
       axis.text.y = element_text(size=14), 
       legend.title = element_blank()
@@ -562,7 +559,7 @@ scale_x_log10(
    labels = scales::trans_format("log10", scales::math_format(10^.x))
  )+ 
   xlab("All Disturbances") + 
-  #scale_color_manual(values= disturbence_colors)+
+  scale_color_manual(values= color_cheat_sheet[color_cheat_sheet$dist %in% other_dists,]$colors)+
   xlab("Area ha") +
   ylab("Interior / Total Ratio ")+ 
   ggtitle("Disturbance Types")+
@@ -749,6 +746,7 @@ scale_x_log10(
  
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 library(gridExtra)
+library(grid)
 dist_order <- c("Unknown", "Other Mechanical", "Prescribed Fire", "Wildfire", "Thinning", "Herbicide", "Clearcut")
 
 ### Disturbance Model lines
@@ -772,9 +770,9 @@ ggplot(aes(sizw, ratio), show.legend = TRUE) +
    geom_line(aes(x =seq, (all_dist[[2]][2]*seq^all_dist[[2]][3])/(all_dist[[2]][1] + seq^all_dist[[2]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[2],]$colors)+
    geom_line(aes(x =seq, (all_dist[[3]][2]*seq^all_dist[[3]][3])/(all_dist[[3]][1] + seq^all_dist[[3]][3]) ), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[3],]$colors )+
    geom_line(aes(x =seq, (all_dist[[4]][2]*seq^all_dist[[4]][3])/(all_dist[[4]][1] + seq^all_dist[[4]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[4],]$colors)+
-    geom_line(aes(x =seq, (all_dist[[5]][2]*seq^all_dist[[5]][3])/(all_dist[[6]][1] + seq^all_dist[[5]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[5],]$colors)+
+   geom_line(aes(x =seq, (all_dist[[5]][2]*seq^all_dist[[5]][3])/(all_dist[[6]][1] + seq^all_dist[[5]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[5],]$colors)+
    geom_line(aes(x =seq, (all_dist[[6]][2]*seq^all_dist[[6]][3])/(all_dist[[6]][1] + seq^all_dist[[6]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[6],]$colors)+
-     geom_line(aes(x =seq, (all_dist[[7]][2]*seq^all_dist[[7]][3])/(all_dist[[7]][1] + seq^all_dist[[7]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[7],]$colors)+
+    geom_line(aes(x =seq, (all_dist[[7]][2]*seq^all_dist[[7]][3])/(all_dist[[7]][1] + seq^all_dist[[7]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[7],]$colors)+
   
 scale_x_continuous(trans="log") +
 scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  high = "#636363", low = "#bdbdbd") +
@@ -808,23 +806,21 @@ ggsave(disturbence_plot, filename = "disturbence_plot.png", bg ="transparent")
 
 ```{r}
 
-plot <- list()
+#plot <- list()
+
+#length <- length(single_disturbence$sizw)
+#length <- length + 1
+#seq <- c(2:length)
+#seq[length(seq)] <- max(single_disturbence$sizw)
+#lower <- lower_bound_ratios(seq)
+#upper <- upper_bound_ratios(seq)
 
 ## Sequence over all the lines individually
-for(i in seq_along(dist_order)){
-  
-length <- length(single_disturbence$sizw)
-length <- length + 1
-seq <- c(2:length)
-seq[length(seq)] <- max(single_disturbence$sizw)
 
-lower <- lower_bound_ratios(seq)
-upper <- upper_bound_ratios(seq)
-#seq <- 1: max(single_disturbence[dist_con,]$sizw)
+for(i in seq_along(dist_order)){
+
   
-#fake_data_frame <- as.data.frame(cbind(lower, upper))
-  
-plot[[i]] <- single_disturbence %>%
+plot <- single_disturbence %>%
  ggplot(aes(sizw, ratio), show.legend = TRUE) +
   geom_hex(data = single_disturbence[null_model_conditional & single_disturbence$dist_name == dist_order[i], ], aes(sizw, ratio)) +
   geom_line( aes(x =seq   , y = (upper )), color = "black")+
@@ -855,8 +851,9 @@ scale_x_log10(
     , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
     , legend.box.background = element_rect(fill = "transparent"))
 
-}
+ggsave(plot, filename = paste(dist_order[i], "_plot.png", sep =""), bg ="transparent")
 
+}
 
 
 ```
