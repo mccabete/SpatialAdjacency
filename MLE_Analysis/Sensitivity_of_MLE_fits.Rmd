@@ -217,7 +217,8 @@ The Modified Michaelis Menten curve was chosen based on it's ability to match th
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 
 ## Function defining the modifide Michaelis Menten curve
-ic=c(4,1,1,1)
+
+ic=c(4,0.94,0.7029,0.0546)
 MMLnLpower  <- function(beta, ratio, sizw){  ## define likelihood
   LL = -sum(dnorm(ratio,(beta[2]*(sizw^beta[3]))/(beta[1]+(sizw^beta[3])),beta[4], log = TRUE))
   print(LL)
@@ -772,7 +773,10 @@ write.csv(state_to_disturbence_output, "/Users/tess/Documents/work/Spacial_adj/M
 
 ```
 
+
+
 # (In development) Visual Metrics 
+
 
 ## Plotting parameters for visual comparison 
 

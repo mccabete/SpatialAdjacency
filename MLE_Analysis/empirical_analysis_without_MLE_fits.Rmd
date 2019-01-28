@@ -217,6 +217,8 @@ common_disturbences <- common_disturbences[common_disturbences != ""]
 
 disturbences_names <-  common_disturbences # These are the disturbences that are common between 4 ecoregions
 all_disturbences <-  unique(final$dist_name2)
+all_disturbences <- all_disturbences[all_disturbences != "Disease" & all_disturbences != "Biological"]
+## 
 
 ## Create usefull conditional for plotting just common disturbances
 null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
@@ -224,7 +226,7 @@ null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_n
 ## Set up common color schemes 
 disturbence_colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f')   #,'#ff7f00','#cab2d6')
 
-disturbence_colors_all <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f'   ,'#ff7f00','#cab2d6', '#6a3d9a', '#ffff99', '#b15928', '#01665e', '#bababa')
+disturbence_colors_all <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f'   ,'#ff7f00','#cab2d6', '#6a3d9a', '#ffff99', '#b15928')#, '#01665e' ), '#bababa')
 
 eco_region_colors <- c('#df65b0', '#67001f', '#081d58','#7fcdbb') # Oregon then Florida
 
@@ -234,7 +236,8 @@ state_colors <- c('#980043', "#225ea8")
 color_cheat_sheet <- cbind(disturbence_colors_all, sort(all_disturbences))
 color_cheat_sheet <- as_data_frame(color_cheat_sheet)
 colnames(color_cheat_sheet) <- c("colors", "dist")
-color_cheat_sheet$all_eco <- color_cheat_sheet[color_cheat_sheet$dist %in% disturbences_names,]$colors
+color_cheat_sheet$all_eco <- color_cheat_sheet$dist %in% disturbences_names
+
 ```
 
 
@@ -250,25 +253,55 @@ library(knitr)
 # table$percent_unknown_disturbence_event <- dim(unknowns)[1]/dim(final)[1]
 # table$percent_unknown_single_area <- sum(unknown_only$size_ha)/ sum(final$size_ha)
 # table$percent_unknown_single_event <-  dim(unknown_only)[1]/dim(final)[1]
-# table$pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+ #table$pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+#pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
 # table$percent_unknown_area <- sum(unknowns$size_ha) / sum(final$size_ha)
 # table$pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
+#pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
 # table$percent_mixed_no_unknows <- sum(no_unknowns_mixed_disturbence$size_ha)/ sum(final$size_ha)
 # print(table)
 # table$percent_mixed_no_unknowns_event <- dim(no_unknowns_mixed_disturbence)[1]/dim(final)[1]
 
+pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
 
+percent_unknown_single_event <-  dim(unknown_only)[1]/dim(final)[1]
+percent_unknown_single_area <- sum(unknown_only$size_ha)/ sum(final$size_ha)
+
+
+options(sig = 10)
 ## Print out Disturbence area percentage and event percentage 
-for(i in seq_along(disturbences_names)){
-  subset <- single_disturbence[single_disturbence$dist_name == disturbences_names[i], ]
+for(i in seq_along(all_disturbences)){
+  
+  subset <- single_disturbence[single_disturbence$dist_name == all_disturbences[i], ]
   percent_event <- dim(subset)[1] / dim(final)[1]
   percent_area <- sum(na.omit(subset$size_ha))/ sum(na.omit(final$size_ha))
-  
-  print(paste(disturbences_names[i], ":", "Pecent event:", percent_event, "Percent area:", percent_area ))
+  number  <- length(subset$clno)
+  print(paste(all_disturbences[i], ":", "Percent event:", percent_event, "Percent area:", percent_area, "N of: ", number ))
   
 }
 
+## State and ecoregions
 
+length(final[final$state == "FL",]$size_ha)/length(final$size_ha)
+sum(final[final$state == "FL",]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == "8.3",]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == "8.3",]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == "8.5",]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == "8.5",]$size_ha)/sum(final$size_ha)
+
+
+
+length(final[final$state == "OR",]$size_ha)/length(final$size_ha)
+sum(final[final$state == "OR",]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == 6.2,]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == 6.2,]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == 7.1,]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == 7.1,]$size_ha)/sum(final$size_ha)
 
 ```
 # Decriptive Statistics for Mixed disturbences
@@ -377,7 +410,7 @@ ggsave(density_ecoregions, filename = "density_ecoregions.png", bg="transparent"
 ### Disturbence Density Plots 
 #density_disturbence <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
 #density_disturbence <- single_disturbence %>%
-density_disturbence <- final %>%
+density_disturbence <- final[final$dist_name2 %in% all_disturbences,]%>%
 ggplot( aes(x = size_ha, y = dist_name2, fill = dist_name2)) + scale_x_continuous(trans="log", limits = 0.09)+ geom_density_ridges() +
   geom_vline(xintercept = 0.09)+
 theme(panel.background = element_blank(), 
@@ -426,15 +459,15 @@ mastication <- single_disturbence[single_disturbence$dist_name == "Mastication",
 herbicide <- single_disturbence[single_disturbence$dist_name == "Herbicide",]
 unknown_only <- unknown_only
 harvest <- single_disturbence[single_disturbence$dist_name == "Harvest",]
-biological <- single_disturbence[single_disturbence$dist_name == "Biological",]
+#biological <- single_disturbence[single_disturbence$dist_name == "Biological",]
 chemical <- single_disturbence[single_disturbence$dist_name == "Chemical",]
-disease <- single_disturbence[single_disturbence$dist_name == "Disease",]
+#disease <- single_disturbence[single_disturbence$dist_name == "Disease",]
 mixed <- final[final$dist_name2 == "Mixed",]
 
 options(digits = 3)
-dist_size<-list(clearcut_only$sizw, wildland$sizw, wildfire$sizw, prescribed$sizw, thining_only$sizw, other_mechanical$sizw, as.numeric(unknown_only$sizw), herbicide$sizw, mastication$sizw, as.numeric(harvest$sizw), as.numeric(biological$sizw), as.numeric(chemical$sizw), as.numeric(disease$sizw), as.numeric(mixed$sizw) )
+dist_size<-list(clearcut_only$sizw, wildland$sizw, wildfire$sizw, prescribed$sizw, thining_only$sizw, other_mechanical$sizw, as.numeric(unknown_only$sizw), herbicide$sizw, mastication$sizw, as.numeric(harvest$sizw), as.numeric(chemical$sizw), as.numeric(mixed$sizw) )
 
-names(dist_size) <- c("Clearcut", "Wildland Fire", "Wildfire", "Prescribed", "Thinning","Other mechanical", "Unknown", "Herbicide", "Mastication", "Harvest", "Biological", "Chemical", "Disease", "Mixed" )
+names(dist_size) <- c("Clearcut", "Wildland Fire", "Wildfire", "Prescribed", "Thinning","Other mechanical", "Unknown", "Herbicide", "Mastication", "Harvest", "Chemical",  "Mixed" )
 
 size_dist_resulsts <- list()
 
@@ -649,6 +682,30 @@ for( i in 1:length(grep("param", names(disturbence_params)))){
 #state_to_disturbence_params <- state_to_disturbence_params[state_to_disturbence_params$tmt_1 == min(state_to_disturbence_params$tmt_1),] ## Not Significant
 
 
+
+```
+
+## Double Are Florida's curves really different? 
+
+```{r}
+### Is Florida significantly different when evaluated seperatly? (Note, had to load objects from sensitivity_of_MLE_fits)
+
+## Compare? 
+
+    dev.null <-   2*florida_param$value ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2*fl_8_3$value + 2*fl_8_5$value   # 8 params in the null, 16 - 4
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,4)
+    pval 
+
+    
+### Is Oregon significantly different when evaluated seperatly? 
+    
+dev.null <-   2*oregon_param$value ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2* or_6_2$value + 2*or_7_1$value   # 8 params in the null, 16 - 4
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,4)
+    pval 
 
 ```
 
