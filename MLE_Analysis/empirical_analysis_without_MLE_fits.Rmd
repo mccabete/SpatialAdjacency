@@ -865,12 +865,12 @@ ggsave(disturbence_plot, filename = "disturbence_plot.png", bg ="transparent")
 
 #plot <- list()
 
-#length <- length(single_disturbence$sizw)
-#length <- length + 1
-#seq <- c(2:length)
-#seq[length(seq)] <- max(single_disturbence$sizw)
-#lower <- lower_bound_ratios(seq)
-#upper <- upper_bound_ratios(seq)
+length <- length(single_disturbence$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
 
 ## Sequence over all the lines individually
 
@@ -882,7 +882,7 @@ plot <- single_disturbence %>%
   geom_hex(data = single_disturbence[null_model_conditional & single_disturbence$dist_name == dist_order[i], ], aes(sizw, ratio)) +
   geom_line( aes(x =seq   , y = (upper )), color = "black")+
   geom_line( aes(x =seq  , y = (lower )), color = "black")+
- geom_line( aes(x =seq, (all_dist[[i]][2]*seq^all_dist[[i]][3])/(all_dist[[i]][1] + seq^all_dist[[i]][3]) ), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[i],]$colors)+
+ geom_line( aes(x =seq, (all_dist[[i]][2]*seq^all_dist[[i]][3])/(all_dist[[i]][1] + seq^all_dist[[i]][3]) ), color = "black")+
 
 scale_x_continuous(trans="log") +
 scale_fill_gradient(trans = "log", high = "#636363", low = "#bdbdbd") +
@@ -900,7 +900,7 @@ scale_x_log10(
    labels = scales::trans_format("log10", scales::math_format(10^.x))
  )+ 
   xlab("Disturbance Event Size (ha)") + 
-  scale_color_manual(values= disturbence_colors)+
+  #scale_color_manual(values= disturbence_colors)+
   xlab("Area ha") +
   ylab("Interior / Total Ratio ")+ 
   ggtitle(dist_order[i])+

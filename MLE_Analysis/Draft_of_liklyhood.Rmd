@@ -11,7 +11,7 @@ output: html_document
 ```{r, echo= TRUE}
 
 
-test_dataset <- na.omit(wildfire)
+test_dataset <- na.omit(single_disturbence[null_model_conditional & single_disturbence$dist_name %in% disturbences_names,])
 
 ic=c(2.5,1,1,1) ## initial guess
 #beta <- c(0.002,0.0002,0.002)
@@ -23,7 +23,7 @@ MMLnL  <- function(beta){  ## define likelihood
 }
 test <- MMLnL(ic) ## verify likelihood function works
 #PR2  <- nlm(LnL,ic) ## maximize the likelihood
-PR2  <- optim(ic,MMLnL,method="L-BFGS-B",upper=c(1000,1,1),lower=c(0,0,0)) ## maximize the likelihood
+PR2  <- optim(ic,MMLnL,method="L-BFGS-B") ## maximize the likelihood
 PR2
 
 MMLnL0  <- function(beta){  ## define likelihood
@@ -33,7 +33,7 @@ MMLnL0  <- function(beta){  ## define likelihood
   return(LL)
 }
 ic0=c(10,1)
-PR0  <- optim(ic,MMLnL0,method="L-BFGS-B",upper=c(1000,1),lower=c(0,0)) ## 
+PR0  <- optim(ic,MMLnL0,method="L-BFGS-B") ## 
 
 ic <- c(1, 0.0000000008, 2)
 monoLnL <- function(beta){  ## define likelihood
@@ -53,7 +53,7 @@ MMLnLpower  <- function(beta){  ## define likelihood
   if(!is.finite(LL)) return(1000)
   return(LL)
 }
-PRMMpower  <- optim(ic,MMLnLpower,method="SANN") ## 
+PRMMpower  <- optim(ic,MMLnLpower,method="L-BFGS-B") ## 
 
 ic=c(4,1,2,1)
 hollingIV  <- function(beta){  ## define likelihood
@@ -62,7 +62,7 @@ hollingIV  <- function(beta){  ## define likelihood
   if(!is.finite(LL)) return(1000)
   return(LL)
 }
-PRhollingIV  <- optim(ic,hollingIV,method="L-BFGS-B",upper=c(1000,1),lower=c(0,0)) ## 
+PRhollingIV  <- optim(ic,hollingIV,method="L-BFGS-B") ## 
 
 ic=c(400,1,1,1)
 tess  <- function(beta){  ## define likelihood
@@ -71,13 +71,13 @@ tess  <- function(beta){  ## define likelihood
   if(!is.finite(LL)) return(1000)
   return(LL)
 }
-tess_power  <- optim(ic,tess,method="L-BFGS-B",upper=c(1000,1),lower=c(0,0)) ##
+tess_power  <- optim(ic,tess,method="L-BFGS-B") ##
 
 
 pseq = seq(log10(4),log(max(test_dataset$sizw)),length=1000)
 xseq = 10^pseq
 
-plot(test_dataset$sizw,test_dataset$ratio,log='x')
+plot(test_dataset$sizw,test_dataset$ratio,log='x', xlab = "Size (Pixels)", ylab = "Interior/ total ratio", main = "Comparisons of functional forms", pch = ".")
 #lines(xseq,(ic[2]*xseq)/(ic[1]+xseq))
 beta = PR2$par
 lines(xseq,(beta[2]*xseq)/(beta[1]+xseq),col="red")
@@ -85,7 +85,7 @@ beta0 = PR0$par
 lines(xseq,(xseq)/(beta[1]+xseq),col="green")
 lines(xseq, (PRmono$par[1]*(1-exp(-PRmono$par[2]*xseq))), col = "blue")
 lines(xseq,(PRMMpower$par[2]*(xseq^PRMMpower$par[3]))/(PRMMpower$par[1]+(xseq^PRMMpower$par[3])),col="orange")
-lines(xseq, (tess_power$par[2]*xseq^tess_power$par[3])/((tess_power$par[1]^(tess_power$par[3] -1)) + xseq^tess_power$par[3]))
+lines(xseq, (tess_power$par[2]*xseq^tess_power$par[3])/((tess_power$par[1]^(tess_power$par[3] -1)) + xseq^tess_power$par[3]), col = "purple")
 lines(xseq, (PRhollingIV$par[2]*xseq^2/(PRhollingIV$par[1] + PRhollingIV$par[3]*xseq + xseq^2)) , col = "grey")
 
 
