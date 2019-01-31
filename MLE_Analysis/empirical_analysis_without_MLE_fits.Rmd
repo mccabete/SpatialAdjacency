@@ -1,0 +1,925 @@
+---
+title: "Empirical Analyses"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(MASS)
+library(ggridges)
+```
+
+# read in data
+
+```{r, echo= TRUE, message=FALSE, warning=FALSE}
+
+florida_8_3 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_fixed_8_3_2014dm2.csv", header = TRUE)
+florida_8_5 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Florida_fixed_8_5_2014dm2.csv", header = TRUE)
+  
+oregon_6_2 <- read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_fixed__6_2_2014dm2.csv", header = TRUE)
+oregon_7_1 <-  read.csv("~/Documents/work/Spacial_adj/Data_and_Figures/Oregon_fixed__7_1_2014dm2.csv", header = TRUE)
+```
+
+# Upper + lower interior/ total ratio Helper functions
+
+These functions provide the bounds on upper and lower interior / total ratios for different numbers of pixels. 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+upper_bound_ratios <- function(x){
+  upper <- rep(NA, length(x))
+  edge <- rep(NA, length(x))
+  interior <- rep(NA, length(x))
+  
+  ## get edges
+  for(i in seq_along(x)){
+    smaller_sqrt <- floor(sqrt(x[i]))
+    smaller_square <- smaller_sqrt^2
+    
+    larger_sqrt <- ceiling(sqrt(x[i]))
+    
+    remainder <- x[i] %% smaller_square
+    
+    if (remainder > smaller_sqrt){
+      edge[i] <- 4 * larger_sqrt
+    }
+    
+    if (remainder <= smaller_sqrt){
+      edge[i] <- (2*smaller_sqrt) + 2*(1+smaller_sqrt)
+    }
+    
+    if (remainder == 0){
+      edge[i] <- 4 * larger_sqrt
+    }
+  }
+  
+  #get interiors
+  for (i in seq_along(x)){
+    interior[i] <- 4 * x[i]
+    interior[i] <- interior[i] - edge[i]
+  }
+  
+  for (i in seq_along(x)){
+    if (x[i] == 1){
+      upper[i] <- 0
+      next  
+    }
+    if (x[i] == 2){
+      upper[i] <- 0.25
+      next
+    }
+    if (x[i] == 3){
+      upper[i] <- 0.5
+      next 
+    }
+    
+    upper[i] <- interior[i] / (interior[i] + edge[i])
+  }
+  
+  
+  return(upper)
+}
+
+lower_bound_ratios <- function(x){
+  lower <- rep(NA, length(x))
+  edge <- rep(NA, length(x))
+  interior <- rep(NA, length(x))
+  
+  for (i in seq_along(x)){
+    if(x[i] == 1){
+      edge[i] <- 4
+      next
+    }
+    
+    if (x[i] == 2){
+      edge[i] <- 6  
+      next
+    }
+    
+      edge[i] <- (2 * (x[i] - 2)) + 6 # The six accounts for sides of the two end pixels 
+  }
+  
+  for (i in seq_along(x)){
+    if(x[i] == 1){
+    interior[i] <- 0
+     lower[i] <- interior[i] / (interior[i] + edge[i])
+      next
+    }
+    
+    if (x[i] == 2){
+     interior[i] <- 2
+      lower[i] <- interior[i] / (interior[i] + edge[i])
+      next
+    }
+    
+     interior[i] <- ((4 * x[i]) - edge[i])
+     lower[i] <- interior[i] / (interior[i] + edge[i])
+  }
+  return (lower)
+}
+
+
+```
+
+# Sifting out edge-cases with artificial ratio inflation
+
+The base raster adjacency function that we used when calculating interior/total ratios made a wrap-around adjacency assumption, inflating the adjacency of corner and edge pixels. We corrected for it by setting ratios above the maximum to NA. 
+
+In addition, the LANDFIRE dataset had two seperate catagories for "Unknown". They are: "Unknown/Fire Doubtful" - a catagory that replaced the initial 2000 "Unknown" catagory, and "Unknown/Possibly Fire". For our analysis, both catagories were considered "Unknown". 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+oregon_6_2$eco_II <- "6.2"  ## Put in Ecoregion labels 
+oregon_7_1$eco_II <- "7.1"
+florida_8_3$eco_II <- "8.3"
+florida_8_5$eco_II <- "8.5"
+
+florida <- rbind(florida_8_3, florida_8_5) 
+oregon <- rbind(oregon_6_2, oregon_7_1)
+
+florida$size_ha <- florida$sizw * 0.09  ## Convert Pixels to ha
+oregon$size_ha <- oregon$sizw * 0.09
+
+florida$state <- "FL"  ## State Labels 
+oregon$state <- "OR"
+final <- rbind(florida, oregon)
+
+## Correcting for wrap-around ratio inflation
+final$ratio[(final$ratio > 0.25) & (final$sizw == 2)] <- NA
+final$ratio[(final$ratio > 0.33) & (final$sizw == 3)] <- NA
+final$ratio[(final$ratio > 0.50) & (final$sizw == 4)] <- NA
+final$ratio[(final$ratio > 0.5 ) & (final$sizw == 5)] <- NA
+final$ratio[(final$ratio > 0.55333333) & (final$sizw == 6)] <- NA
+final$ratio[(final$ratio > 0.5714286) & (final$sizw == 7)] <- NA
+final$ratio[(final$ratio >  0.7083333) & (final$sizw == 12)] <- NA
+final$ratio[(final$ratio >  0.7631579) & (final$sizw == 19)] <- NA
+
+## 2014 specific ID's
+#final[final$ids == 212, ]$dist_name <- "Wildfire"
+  final[final$ids == 231, ]$dist_name <- "Wildfire"
+  
+## Check that all remaining unnamed ID's are in 1100's range  
+ids_of_unnamed <- unique(final[final$dist_name == "",]$ids)
+tmp <- strsplit(as.character(ids_of_unnamed), split="\\s+")
+tmp <- unlist(tmp)
+tmp <- as.numeric(tmp)
+all_unknowns <- all(tmp > 1100)
+
+if (all_unknowns){
+  final[final$dist_name == "",]$dist_name <- "Unknown"
+}else{
+  print("NOT ALL UNKNOWNS, RECHECK PARSING")
+}
+
+## New Column that treats mixed disturbance as a type of disturbance
+final$dist_name2 <- final$dist_name
+final <- as.data.frame(final, stringsAsFactors = FALSE)
+final$dist_name2 <- as.character(final$dist_name2)
+final[grep(",", final$dist_name),]$dist_name2 <- "Mixed"
+
+```
+
+
+## Analyses & Descriptive statistics
+
+# Subset Dataset for percentenge estimates of mixed disturbence types, and unknowns
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+unknowns <- final[grep("Unknown", final$dist_name) ,]   
+no_unknowns <- dplyr::anti_join(final, unknowns, by = "dist_name") 
+mixed_disturbence <- final[grep(",", final$dist_name), ]
+single_disturbence <- dplyr::anti_join(final, mixed_disturbence, by = "dist_name")
+
+single_disturbence <- na.omit(single_disturbence)
+
+no_unknowns_mixed_disturbence <- dplyr::anti_join(mixed_disturbence, unknowns, by = "dist_name") 
+no_unknowns_single_disturbence <- dplyr::anti_join(single_disturbence, unknowns, by = "dist_name")
+unknown_only <- dplyr::anti_join(unknowns, mixed_disturbence, by = "dist_name")
+
+```
+
+```{r}
+dist_8_3 <- unique(single_disturbence[single_disturbence$eco_II == 8.3,]$dist_name)
+dist_8_5 <- unique(single_disturbence[single_disturbence$eco_II == 8.5,]$dist_name)
+dist_7_1 <- unique(single_disturbence[single_disturbence$eco_II == 7.1,]$dist_name)
+dist_6_2 <- unique(single_disturbence[single_disturbence$eco_II == 6.2,]$dist_name)
+
+common_disturbences <- Reduce(intersect, list(dist_8_3,dist_8_5,dist_7_1, dist_6_2))
+common_disturbences <- common_disturbences[common_disturbences != ""]
+
+disturbences_names <-  common_disturbences # These are the disturbences that are common between 4 ecoregions
+all_disturbences <-  unique(final$dist_name2)
+all_disturbences <- all_disturbences[all_disturbences != "Disease" & all_disturbences != "Biological"]
+## 
+
+## Create usefull conditional for plotting just common disturbances
+null_model_conditional <- single_disturbence$sizw >3 & single_disturbence$dist_name %in% disturbences_names 
+
+## Set up common color schemes 
+disturbence_colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f')   #,'#ff7f00','#cab2d6')
+
+disturbence_colors_all <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f'   ,'#ff7f00','#cab2d6', '#6a3d9a', '#ffff99', '#b15928')#, '#01665e' ), '#bababa')
+
+eco_region_colors <- c('#df65b0', '#67001f', '#081d58','#7fcdbb') # Oregon then Florida
+
+state_colors <- c('#980043', "#225ea8")
+
+## Tie colors to disturbance types
+color_cheat_sheet <- cbind(disturbence_colors_all, sort(all_disturbences))
+color_cheat_sheet <- as_data_frame(color_cheat_sheet)
+colnames(color_cheat_sheet) <- c("colors", "dist")
+color_cheat_sheet$all_eco <- color_cheat_sheet$dist %in% disturbences_names
+
+```
+
+
+
+# Estimate qa/qc stats for supplemental table 1
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+library(lemon)
+library(knitr)
+
+## Estimate unknown disturbence in an object 
+# table <- list()
+# table$percent_unknown_disturbence_event <- dim(unknowns)[1]/dim(final)[1]
+# table$percent_unknown_single_area <- sum(unknown_only$size_ha)/ sum(final$size_ha)
+# table$percent_unknown_single_event <-  dim(unknown_only)[1]/dim(final)[1]
+ #table$pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+#pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+# table$percent_unknown_area <- sum(unknowns$size_ha) / sum(final$size_ha)
+# table$pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
+#pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
+# table$percent_mixed_no_unknows <- sum(no_unknowns_mixed_disturbence$size_ha)/ sum(final$size_ha)
+# print(table)
+# table$percent_mixed_no_unknowns_event <- dim(no_unknowns_mixed_disturbence)[1]/dim(final)[1]
+
+pecent_mixed_disturbence_event <- dim(mixed_disturbence)[1] /dim(final)[1]
+pecent_mixed_disturbence_area <- sum(mixed_disturbence$size_ha) / sum(final$size_ha)
+
+percent_unknown_single_event <-  dim(unknown_only)[1]/dim(final)[1]
+percent_unknown_single_area <- sum(unknown_only$size_ha)/ sum(final$size_ha)
+
+
+options(sig = 10)
+## Print out Disturbence area percentage and event percentage 
+for(i in seq_along(all_disturbences)){
+  
+  subset <- single_disturbence[single_disturbence$dist_name == all_disturbences[i], ]
+  percent_event <- dim(subset)[1] / dim(final)[1]
+  percent_area <- sum(na.omit(subset$size_ha))/ sum(na.omit(final$size_ha))
+  number  <- length(subset$clno)
+  print(paste(all_disturbences[i], ":", "Percent event:", percent_event, "Percent area:", percent_area, "N of: ", number ))
+  
+}
+
+## State and ecoregions
+
+length(final[final$state == "FL",]$size_ha)/length(final$size_ha)
+sum(final[final$state == "FL",]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == "8.3",]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == "8.3",]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == "8.5",]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == "8.5",]$size_ha)/sum(final$size_ha)
+
+
+
+length(final[final$state == "OR",]$size_ha)/length(final$size_ha)
+sum(final[final$state == "OR",]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == 6.2,]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == 6.2,]$size_ha)/sum(final$size_ha)
+
+length(final[final$eco_II == 7.1,]$size_ha)/length(final$size_ha)
+sum(final[final$eco_II == 7.1,]$size_ha)/sum(final$size_ha)
+
+```
+# Decriptive Statistics for Mixed disturbences
+
+```{r}
+## A co-occurence matrix of Disturbences in mixed disturbneces
+names_of_mixed <- mixed_disturbence$dist_name
+tmp_names <- strsplit(as.character(names_of_mixed), split = ", ")
+mixed_names <- unlist(tmp_names)
+
+heatmap <- matrix(nrow = 14, ncol = 14)
+heatmap[is.na(heatmap)] <- 0
+heatmap <- as.data.frame(heatmap)
+colnames(heatmap) <- unique(mixed_names)
+rownames(heatmap) <- unique(mixed_names)
+
+for (i in 1:length(tmp_names)){
+  length <- length(tmp_names[[i]])
+  for (j in 1: length){
+    dist_y <- tmp_names[[i]][j]
+    for(k in 1:length){
+      dist_x <- tmp_names[[i]][k]
+      heatmap[dist_y, dist_x] <- heatmap[dist_y, dist_x] +1
+    }
+    
+  }
+  
+}
+
+heatmap <- as.matrix(heatmap)
+ get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat)
+ }
+ heatmap <- get_lower_tri(heatmap)
+ 
+
+
+library(reshape2)
+melted <- melt(heatmap)
+melted
+
+ggheatmap <- ggplot(melted, aes(Var2, Var1, fill = log(value)))+
+ geom_tile(color = "grey")+
+ scale_fill_gradient2(low = "white", high = "blue",
+    #space = "Lab", 
+    name="Co-ocurence", na.value="white") +
+  theme_minimal()+ # minimal theme
+ # scale_x_continuous(trans="log")+
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1), axis.text.y = element_text( size = 12))+
+ coord_fixed()+ 
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 3) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border =element_blank(),
+  #panel.background = element_rect(fill = "white"), #element_blank(),
+  axis.ticks = element_blank(),
+  legend.position ="none"
+  )+
+  ggtitle("Co-Occurence Within Mixed Disturbances")
+
+ggheatmap
+
+```
+
+# Density Figures
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+
+## Ecoregion in ggridges
+#density_ecoregions <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+
+#density_ecoregions <- single_disturbence %>%
+final$size_ha <- as.numeric(final$size_ha)
+density_ecoregions <- final %>%
+ggplot(aes(x = size_ha, y = eco_II, fill = eco_II)) + scale_x_continuous(trans="log")+
+  geom_density_ridges() +
+  geom_vline(xintercept = 0.09)+
+theme(panel.background = element_blank(), 
+      plot.background = element_rect(fill = "transparent", color = NA),
+      axis.text.y = element_blank(), 
+      axis.title.y = element_blank(), 
+      axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      legend.position = "none"
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Disturbance Event Size ha") + 
+  #ggtitle("Ecoregion")+
+  scale_fill_manual(values= eco_region_colors)  
+  density_ecoregions
+
+# 800 461
+density_ecoregions
+ggsave(density_ecoregions, filename = "density_ecoregions.png", bg="transparent", width = 800, height = 461, units = "mm")
+
+
+### Disturbence Density Plots 
+#density_disturbence <- na.omit(single_disturbence[single_disturbence$dist_name %in% disturbences_names, ]) %>%
+#density_disturbence <- single_disturbence %>%
+density_disturbence <- final[final$dist_name2 %in% all_disturbences,]%>%
+ggplot( aes(x = size_ha, y = dist_name2, fill = dist_name2)) + scale_x_continuous(trans="log", limits = 0.09)+ geom_density_ridges() +
+  geom_vline(xintercept = 0.09)+
+theme(panel.background = element_blank(), 
+      plot.background = element_rect(fill = "transparent", color = NA),
+      axis.text.y = element_blank(), 
+      axis.title.y = element_blank(), 
+      axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      legend.position = "none"
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Disturbance Event Size ha") +
+  #ggtitle("Size Distributions")+
+  scale_fill_manual(values= disturbence_colors_all)
+
+density_disturbence
+ ggsave(density_disturbence, filename = "density_disturbence.png", bg="transparent")
+
+```
+
+
+# KS tests for Supplemental Table 2
+
+The Kolmogorov–Smirnov test we ran included single pixel, double pixel, and triple pixels unlike the Maximum Likelihood tests, where single, double and triple pixel -sized disturbences were excluded (See below). 
+
+Initialy, we just ran KS tests on disturbence size distributions that were also included in the size distribution by interior-totel ratio curve fits and likelyhood-ratio test comparison. Because the liklyhood ratio test requires strict subsetting, we eliminated all disturbences that weren't present in all four ecoregions. KS tests don't have the same requirements, so here we explore the wider range of size distributions present in the dataset. We treat mixed disturbances as an independant type of disturbance. 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+### Making Disturbence-level objects
+fire_only <- single_disturbence[grep("ire", single_disturbence$dist_name),]
+wildland <- fire_only[grep("Wildland", fire_only$dist_name),]
+wildfire <- fire_only[grep("Wildfire", fire_only$dist_name),]
+Prescribed <- fire_only[grep("Prescribed Fire", fire_only$dist_name),]
+
+prescribed <- Prescribed
+clearcut_only <- single_disturbence[grep("Clear", single_disturbence$dist_name),]
+#herbicide_only <- single_disturbence[grep("Herbicide", single_disturbence$dist_name),]
+
+thining_only <- single_disturbence[grep("Thinning", single_disturbence$dist_name),]
+other_mechanical <- single_disturbence[grep("Other Mechanical", single_disturbence$dist_name),]
+mastication <- single_disturbence[single_disturbence$dist_name == "Mastication",]
+herbicide <- single_disturbence[single_disturbence$dist_name == "Herbicide",]
+unknown_only <- unknown_only
+harvest <- single_disturbence[single_disturbence$dist_name == "Harvest",]
+#biological <- single_disturbence[single_disturbence$dist_name == "Biological",]
+chemical <- single_disturbence[single_disturbence$dist_name == "Chemical",]
+#disease <- single_disturbence[single_disturbence$dist_name == "Disease",]
+mixed <- final[final$dist_name2 == "Mixed",]
+
+options(digits = 3)
+dist_size<-list(clearcut_only$sizw, wildland$sizw, wildfire$sizw, prescribed$sizw, thining_only$sizw, other_mechanical$sizw, as.numeric(unknown_only$sizw), herbicide$sizw, mastication$sizw, as.numeric(harvest$sizw), as.numeric(chemical$sizw), as.numeric(mixed$sizw) )
+
+names(dist_size) <- c("Clearcut", "Wildland Fire", "Wildfire", "Prescribed", "Thinning","Other mechanical", "Unknown", "Herbicide", "Mastication", "Harvest", "Chemical",  "Mixed" )
+
+size_dist_resulsts <- list()
+
+iterator <- 0
+for ( i in 1:length(names(dist_size))){
+  for (j in 1:length(names(dist_size))){
+    print(paste(names(dist_size)[i], "x", names(dist_size)[j]))
+    iterator <- iterator + 1
+    results <- ks.test(dist_size[[i]],dist_size[[j]], alternative = "two.sided")
+    results$names <- paste(names(dist_size)[i], "x", names(dist_size)[j])
+    size_dist_resulsts[[iterator]] <- results
+  }
+}
+ 
+options(digits = 3)
+sig <- rep(NA, length(names(dist_size))^2)
+KS_results <- list()
+KS_results$combination  <- rep(NA, length(names(dist_size))^2)
+KS_results$pval <- rep(NA, length(names(dist_size))^2)
+KS_results$sig <- rep(NA, length(names(dist_size))^2)
+KS_results$D <- rep(NA, length(names(dist_size))^2)
+ KS_results <- as.data.frame(KS_results)
+
+for (i in 1:(length(names(dist_size))^2)){
+
+  KS_results$pval[i] <- size_dist_resulsts[[i]]$p.value
+  KS_results$combination[i] <- paste(size_dist_resulsts[[i]]$names)
+  KS_results$sig[i] <- FALSE
+  KS_results$D[i] <- size_dist_resulsts[[i]]$statistic
+ 
+  ## Build # of pairwise comparisons function for the calculation of p.val
+  pairs <- function (num){
+    result <- (num*(num-1))/2
+    return(result)
+  }
+  
+  Bonf_val <- 0.05/ (pairs(length(all_disturbences)) + 3) # Plus 3 for states and ecoregions
+  
+  if(size_dist_resulsts[[i]]$p.value < Bonf_val) { 
+   sig[i] <- paste(size_dist_resulsts[[i]]$names)
+   KS_results$sig[i] <- TRUE
+   print("Found one!")
+  }
+    
+}
+ KS_results <- as.list(KS_results)
+state_size <- ks.test(as.numeric(single_disturbence[single_disturbence$state == "OR",]$sizw), as.numeric(single_disturbence[single_disturbence$state == "FL",]$sizw ))
+
+KS_results$combination[length(names(dist_size))^2 +1] <- "Oregon x Florida"
+KS_results$pval[length(names(dist_size))^2 +1] <- state_size$p.value
+KS_results$sig[length(names(dist_size))^2 +1] <-  state_size$p.value < Bonf_val
+KS_results$D[length(names(dist_size))^2 +1] <- state_size$statistic
+
+fl_8_3_8_5 <- ks.test(as.numeric(single_disturbence[single_disturbence$eco_II == "8.5",]$sizw), as.numeric(single_disturbence[single_disturbence$eco_II == "8.3",]$sizw ))
+or_6_2_7_1 <- ks.test(as.numeric(single_disturbence[single_disturbence$eco_II == "6.2",]$sizw), as.numeric(single_disturbence[single_disturbence$eco_II == "7.1",]$sizw ))
+
+KS_results$combination[length(names(dist_size))^2 +2] <- paste("8.5 x 8.3")
+KS_results$pval[length(names(dist_size))^2 +2] <- fl_8_3_8_5$p.value
+KS_results$sig[length(names(dist_size))^2 +2] <-  fl_8_3_8_5$p.value < Bonf_val
+KS_results$D[length(names(dist_size))^2 +2] <- fl_8_3_8_5$statistic
+
+KS_results$combination[length(names(dist_size))^2 +3] <- paste("6.2 x 7.1")
+KS_results$pval[length(names(dist_size))^2 +3] <- or_6_2_7_1$p.value
+KS_results$sig[length(names(dist_size))^2 +3] <-  or_6_2_7_1$p.value < Bonf_val
+KS_results$D[length(names(dist_size))^2 +3] <- or_6_2_7_1$statistic
+
+
+KS_results <- as.data.frame(KS_results)
+KS_results <- KS_results[KS_results$pval != 1, ]
+
+### Make table with results 
+options(knitr.table.format = "html")
+
+KS_results[,c(1:2, 4)] %>%
+ # select(combination, pval, D) %>%
+ kable(  booktabs = T, escape = F, digits = 5, row.names = FALSE, col.names = c("Comparison", "P value", "D statistic")) %>%
+  kable_styling(latex_options = "striped", full_width = F) %>%
+  #select(KS_results$sig == TRUE) %>%
+  row_spec(which(KS_results$sig), bold = T, background = "#ADD8E6")# %>%
+  
+write.csv2(KS_results, row.names = FALSE, file = "Mixed_included_results_2018.csv")
+
+
+```
+
+# Plotting Disturbence-level Abundance
+
+This figure didn't make it into the paper, but is another _non MLE_ visualization tool. 
+
+```{r}
+
+## Making the upper and lower bounds
+length <- length(single_disturbence[hex_conditional,]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[hex_conditional,]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+other_dists <- all_disturbences[!all_disturbences %in% disturbences_names]
+
+### Disturbances hex only
+hex_conditional <- single_disturbence$sizw > 3 & single_disturbence$dist_name %in% other_dists
+
+disturbences_abundence <- single_disturbence[hex_conditional, ] %>%
+ggplot( show.legend = FALSE) +
+  geom_hex(aes(sizw, ratio, color = dist_name)) + 
+  geom_line(aes(x =seq   , y = (upper )), color = "black")+
+  geom_line(aes(x =seq  , y = (lower )), color = "black")+
+scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log",   low = "#bdbdbd", high = "#636363") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      axis.title.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("All Disturbances") + 
+  scale_color_manual(values= color_cheat_sheet[color_cheat_sheet$dist %in% other_dists,]$colors)+
+  xlab("Area ha") +
+  ylab("Interior / Total Ratio ")+ 
+  ggtitle("Disturbance Types")+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+disturbences_abundence
+
+# ggsave(disturbences_abundence, filename = #"disturbences_abundence.png", bg="transparent")
+ 
+
+```
+
+# Choosing parameter sets from sensitivity analysis
+
+```{r}
+## read in objects from Sensitivity_of_MLE fits files
+state_to_null_output <- read.csv("/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_state_to_null_output.csv") 
+eco_to_state_output <- read.csv("/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_eco_to_state_output.csv")
+disturbence_to_null_output <- read.csv("/Users/tess/Documents/work/Spacial_adj/MLE_Analysis/fixed_disturbance_to_null_output.csv")
+
+## Making pottable objects with qa/qc filtering
+state_params <- state_to_null_output %>%
+                filter(all_converge == TRUE)  %>%
+                filter(valid_subset == TRUE) 
+state_params <- state_params[state_params$tmt_l == min(state_params$tmt_l),]
+
+florida_param <- strsplit(as.character(state_params$florida_param[1]), split = ",")
+florida_param <- unlist(florida_param)
+
+eco_state_params <- eco_to_state_output %>%
+                filter(all_converge == TRUE)  %>%
+                filter(valid_subset == TRUE) 
+eco_state_params <- eco_state_params[eco_state_params$tmt_l == min(eco_state_params$tmt_l),]
+
+fl_8_3 <- strsplit(as.character(eco_state_params$fl_8_3_param[1]), split = ",")
+fl_8_3  <- unlist(fl_8_3)
+fl_8_3  <- as.numeric(fl_8_3)
+
+fl_8_5 <- strsplit(as.character(eco_state_params$fl_8_5_param[1]), split = ",")
+fl_8_5 <- unlist(fl_8_5)
+fl_8_5 <- as.numeric(fl_8_5)
+or_7_1 <- strsplit(as.character(eco_state_params$or_7_1_param[1]), split = ",")
+or_7_1 <- unlist(or_7_1)
+or_7_1 <- as.numeric(or_7_1)
+
+or_6_2 <- strsplit(as.character(eco_state_params$or_6_2_param[1]), split = ",")
+or_6_2 <- unlist(or_6_2)
+or_6_2 <- as.numeric(or_6_2)
+
+
+if (length(unique(eco_state_params$pval)) > 1 ){ ## Double check that differences in null MLE doesn't affect the pval
+  print("ERROR SIGNIFICANCE AFFECTED BY OPTIM")
+  eco_state_params <- NULL
+}
+
+disturbence_params <- disturbence_to_null_output  %>%
+                filter(all_converge == TRUE)  %>%
+                filter(valid_subset == TRUE) %>%
+                filter(method == "L-BFGS-B")
+disturbence_params <- disturbence_params[disturbence_params$tmt_l == min(disturbence_params$tmt_l),]
+
+if (length(unique(disturbence_params$pval)) > 1 ){ ## Double check that differences in null MLE doesn't affect the pval
+  print("ERROR SIGNIFICANCE AFFECTED BY OPTIM")
+  disturbence_params <- NULL
+}
+
+## Make list of each disturbance parameter set
+col_list <- grep("param", names(disturbence_params))
+
+all_dist <- list()
+for( i in 1:length(grep("param", names(disturbence_params)))){
+  col <- disturbence_params[, col_list[i]]
+  tmp <- strsplit(as.character(col[1]), split = ",")
+  tmp <- unlist(tmp)
+  tmp <- as.numeric(tmp)
+  all_dist[[i]] <- tmp
+  as.data.frame(all_dist[[i]])
+  names(all_dist[[i]]) <- names(disturbence_params)[col_list[i]]
+  #names(all_dist[[i]]) <- names(disturbence_params)[i]
+  #print(names(all_dist[[i]]))
+}
+
+#state_to_disturbence_params <- state_to_disturbence_output %>%
+#                            filter(all_converge == TRUE)  %>%
+#                            filter(valid_subset == TRUE) 
+#state_to_disturbence_params <- state_to_disturbence_params[state_to_disturbence_params$tmt_1 == min(state_to_disturbence_params$tmt_1),] ## Not Significant
+
+
+
+```
+
+## Double Are Florida's curves really different? 
+
+```{r}
+### Is Florida significantly different when evaluated seperatly? (Note, had to load objects from sensitivity_of_MLE_fits)
+
+## Compare? 
+
+    dev.null <-   2*florida_param$value ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2*fl_8_3$value + 2*fl_8_5$value   # 8 params in the null, 16 - 4
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,4)
+    pval 
+
+    
+### Is Oregon significantly different when evaluated seperatly? 
+    
+dev.null <-   2*oregon_param$value ## tmt from previous analysis MUCH EASIER IF PASSED
+    dev.tmt  <- 2* or_6_2$value + 2*or_7_1$value   # 8 params in the null, 16 - 4
+    LR       <- dev.null - dev.tmt        ## Likelihood ratio
+    pval     <- 1 - pchisq(LR,4)
+    pval 
+
+```
+
+## Ploting curves of interior/total ratio
+
+
+# Ecoregion within state
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+length <- length(single_disturbence[null_model_conditional & single_disturbence$state == "FL",]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+### State based figures
+#final %>% 
+  #filter(state == "FL") %>%
+florida_plot <- single_disturbence[null_model_conditional & single_disturbence$state == "FL",] %>%
+ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex() + 
+  geom_line(aes(x =seq  , y = (upper )), color = "black")+
+  geom_line(aes(x =seq , y = (lower )), color = "black") +
+  geom_line(aes(x = seq, y = ( fl_8_3[2]*seq^fl_8_3[3])/(fl_8_3[1] + seq^fl_8_3[3]) ), color = eco_region_colors[4])+ #plotting fl_8_3
+  geom_line(aes(x = seq, y = (fl_8_5[2]*seq^fl_8_5[3])/(fl_8_5[1] + seq^fl_8_5[3]) ), color = eco_region_colors[3])+ #plotting fl_8_5
+  scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  high = "#636363", low = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Area ha") +
+  ylab("Interior / Total ratio")+ 
+  ggtitle("Florida")+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),        legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+#ggsave(florida_plot, filename = "florida_plot.png", bg ="transparent")
+
+
+length <- length(single_disturbence[null_model_conditional & single_disturbence$state == "OR",]$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence[null_model_conditional,]$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+## State-based figures
+#final %>% 
+  #filter(state == "FL") %>%
+oregon_plot <- single_disturbence[null_model_conditional & single_disturbence$state == "OR",] %>%
+ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex() + 
+  geom_line(aes(x =seq  , y = (upper )), color = "black")+
+  geom_line(aes(x =seq , y = (lower )), color = "black")+
+  geom_line(aes(x = seq, y = ( or_6_2[2]*seq^or_6_2[3])/(or_6_2[1] + seq^or_6_2[3]) ), color = eco_region_colors[1])+ # 6.2
+  geom_line(aes(x = seq, y = (or_7_1[2]*seq^or_7_1[3])/(or_7_1[1] + seq^or_7_1[3]) ), color = eco_region_colors[2])+ # 7.1
+   scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  high = "#636363", low = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Area ha") +
+  ylab("Interior / Total ratio")+ 
+  ggtitle("Oregon")+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),        legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+#ggsave(oregon_plot, filename = "oregon_plot.png", bg ="transparent")
+```
+
+
+# Disturbence curves
+ 
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+library(gridExtra)
+library(grid)
+dist_order <- c("Unknown", "Other Mechanical", "Prescribed Fire", "Wildfire", "Thinning", "Herbicide", "Clearcut")
+
+### Disturbance Model lines
+length <- length(single_disturbence$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+
+disturbence_plot <- single_disturbence %>%
+ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex(data = single_disturbence[null_model_conditional, ],aes(sizw, ratio)) + 
+  geom_line(aes(x =seq   , y = (upper )), color = "black")+
+  geom_line(aes(x =seq  , y = (lower )), color = "black")+
+
+
+## Plot disturbence lines
+ geom_line(aes(x =seq, (all_dist[[1]][2]*seq^all_dist[[1]][3])/(all_dist[[1]][1] + seq^all_dist[[1]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[1],]$colors)+ #5
+   geom_line(aes(x =seq, (all_dist[[2]][2]*seq^all_dist[[2]][3])/(all_dist[[2]][1] + seq^all_dist[[2]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[2],]$colors)+
+   geom_line(aes(x =seq, (all_dist[[3]][2]*seq^all_dist[[3]][3])/(all_dist[[3]][1] + seq^all_dist[[3]][3]) ), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[3],]$colors )+
+   geom_line(aes(x =seq, (all_dist[[4]][2]*seq^all_dist[[4]][3])/(all_dist[[4]][1] + seq^all_dist[[4]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[4],]$colors)+
+   geom_line(aes(x =seq, (all_dist[[5]][2]*seq^all_dist[[5]][3])/(all_dist[[6]][1] + seq^all_dist[[5]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[5],]$colors)+
+   geom_line(aes(x =seq, (all_dist[[6]][2]*seq^all_dist[[6]][3])/(all_dist[[6]][1] + seq^all_dist[[6]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[6],]$colors)+
+    geom_line(aes(x =seq, (all_dist[[7]][2]*seq^all_dist[[7]][3])/(all_dist[[7]][1] + seq^all_dist[[7]][3])), color = color_cheat_sheet[color_cheat_sheet$dist == dist_order[7],]$colors)+
+  
+scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", breaks = c(1,10,100, 500),  high = "#636363", low = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      #legend.position= "none"
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Disturbance Event Size (ha)") + 
+  scale_color_manual(values= disturbence_colors)+
+  xlab("Area ha") +
+  ylab("Interior / Total Ratio ")+ 
+  ggtitle("All Disturbances")+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+ggsave(disturbence_plot, filename = "disturbence_plot.png", bg ="transparent")
+
+```
+
+# Plot Disturbance Curves Individually with data fits
+
+```{r}
+
+#plot <- list()
+
+length <- length(single_disturbence$sizw)
+length <- length + 1
+seq <- c(2:length)
+seq[length(seq)] <- max(single_disturbence$sizw)
+lower <- lower_bound_ratios(seq)
+upper <- upper_bound_ratios(seq)
+
+## Sequence over all the lines individually
+
+for(i in seq_along(dist_order)){
+
+  
+plot <- single_disturbence %>%
+ ggplot(aes(sizw, ratio), show.legend = TRUE) +
+  geom_hex(data = single_disturbence[null_model_conditional & single_disturbence$dist_name == dist_order[i], ], aes(sizw, ratio)) +
+  geom_line( aes(x =seq   , y = (upper )), color = "black")+
+  geom_line( aes(x =seq  , y = (lower )), color = "black")+
+ geom_line( aes(x =seq, (all_dist[[i]][2]*seq^all_dist[[i]][3])/(all_dist[[i]][1] + seq^all_dist[[i]][3]) ), color = "black")+
+
+scale_x_continuous(trans="log") +
+scale_fill_gradient(trans = "log", high = "#636363", low = "#bdbdbd") +
+   theme(panel.background = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.text.x = element_text(size=14),
+      axis.text.y = element_text(size=14), 
+      #legend.position= "none"
+      legend.title = element_blank()
+      ) + 
+scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )+ 
+  xlab("Disturbance Event Size (ha)") + 
+  #scale_color_manual(values= disturbence_colors)+
+  xlab("Area ha") +
+  ylab("Interior / Total Ratio ")+ 
+  ggtitle(dist_order[i])+
+  theme(panel.background = element_rect(fill = "transparent") # bg of the panel
+    , plot.background = element_rect(fill = "transparent", color = NA),      legend.background = element_rect(fill = "transparent")
+    , legend.box.background = element_rect(fill = "transparent"))
+
+ggsave(plot, filename = paste(dist_order[i], "_plot.png", sep =""), bg ="transparent")
+
+}
+
+
+```
+
+
+
+
+
+
+
+
+

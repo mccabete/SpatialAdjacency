@@ -12,9 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rlang)
 library(raster)
 ### gap disturbance
-nrow = 1000  ## 1000 takes ~60 sec
+nrow = 5#1000  ## 1000 takes ~60 sec
 ncol = nrow
-ntime = 1000
+ntime = 5 #1000
 ages = matrix(0,nrow,ncol)
 p.init= 0.01
 
@@ -105,15 +105,15 @@ save(ages.gap,sorted.gap,file=gfile)
 ## Simulate contagious disturbance
 ```{r, fig.asp=1}
 ### contagious disturbance
-nrow = 1000
+nrow =  100#1000
 ncol = nrow
-years = 1000
+years = 100 #1000 #1000
 ages = matrix(0,nrow,ncol)
-p.init= 0.01
+p.init=  0.01
 ps = 0.25
 
 ## simulation
-sfile = "ages.spread.RData"
+#sfile = "ages.spread.RData"
 if(file.exists(sfile)){
   load(sfile)
 } else {
@@ -134,7 +134,7 @@ image(800:900,800:900,log10(ages.spread[800:900,800:900]),xlab="",ylab="",asp=1)
 par(mar=c(5,5,4,2))
 nt=100
 time = 0:nt
-hist(ages.spread+0.0001,probability = TRUE,xlim=c(0,nt),breaks=0:years,xlab="Age (years)",main="Contagious Spread",cex.main=1.75,cex.lab=1.75,cex.axis=1.5)
+hist(ages.spread+0.0001,probability = TRUE,xlim=c(0,nt),breaks=99,xlab="Age (years)",main="Contagious Spread",cex.main=1.75,cex.lab=1.75,cex.axis=1.5)
 #lines(time,dgeom(time,1/mean(ages.spread)),col=3,lwd=3,type='s')
 lines(time,dgeom(time,p.init/ps),col=3,lwd=3,type='s')
 

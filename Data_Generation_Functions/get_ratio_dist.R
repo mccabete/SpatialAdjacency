@@ -1,3 +1,4 @@
+
 get_ratio_dist <- function ( r,text = NULL, dist = NULL, date, csv, eco_region = FALSE, path_ecoregion) {
   
   ## Optional subset by disturbence
