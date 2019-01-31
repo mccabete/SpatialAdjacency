@@ -3,13 +3,13 @@
 Analyses associated with Mike Dietze ( [github](https://github.com/mdietze), [web](http://people.bu.edu/dietze/dietze.html) ) and I's in prep manuscript *Scaling contagious disturbance:a spatially-implicit dynamic model*
 
 _Data_
-Contains intermediate datasets generated from LANDFIRE rasters (Using functions found in Data_Generation_Functions). Datasets are pre-subset and pre quality controlled. For information on subsetting and quality control see Empirical Analysis file in the MLE_Analysis folder. 
+Contains intermediate datasets generated from LANDFIRE rasters (Using functions found in Data_Generation_Functions, specifically the remote submission scripts). Datasets are pre quality controlled. For information on subsetting and quality control see Empirical Analysis file in the MLE_Analysis folder. 
 
 Original Landfire data available at: 
 https://www.landfire.gov/disturbance_2.php
 
 _Simulations_
-Contains the functions used to generate simulations Figures 1-4, Figure 7 and Figure 8. 
+Contains the functions used to generate simulations Figures 1-3, Figure 6 and Figure 8. 
 
 
 _MLE Analysis_
